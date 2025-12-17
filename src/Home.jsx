@@ -5,9 +5,7 @@ import {
   Apple, Beef, Egg, Coffee, Cookie, Snowflake, Candy, Wheat
 } from 'lucide-react';
 
-// ----------------------------------------------------------------------
-// THIS IS THE CHANGE: We import the images from your computer folder
-// ----------------------------------------------------------------------
+// === IMPORT LOCAL IMAGES ===
 import banner1 from './assets/banner1.jpg';
 import banner2 from './assets/banner2.jpg';
 import banner3 from './assets/banner3.jpg';
@@ -15,13 +13,11 @@ import banner3 from './assets/banner3.jpg';
 const Home = () => {
   const [currentSlide, setCurrentSlide] = useState(0);
 
-  // ----------------------------------------------------------------------
-  // THIS IS THE UPDATED ARRAY: We use the variables (banner1) we imported above
-  // ----------------------------------------------------------------------
+  // === SLIDER DATA ===
   const slides = [
     {
       id: 1,
-      image: banner1,  // <--- Using the local image variable
+      image: banner1,
       subtitle: "EXCLUSIVE OFFER -20% OFF",
       title: "Specialist in the grocery store",
       price: "$7.99",
@@ -29,7 +25,7 @@ const Home = () => {
     },
     {
       id: 2,
-      image: banner2,  // <--- Using the local image variable
+      image: banner2,
       subtitle: "FRESH & ORGANIC",
       title: "Best Vegetables & Fruits Collection",
       price: "$5.99",
@@ -37,7 +33,7 @@ const Home = () => {
     },
     {
       id: 3,
-      image: banner3,  // <--- Using the local image variable
+      image: banner3,
       subtitle: "BAKERY PRODUCTS",
       title: "Freshly Baked Every Morning",
       price: "$2.49",
@@ -45,7 +41,7 @@ const Home = () => {
     }
   ];
 
-  // Auto-slide every 5 seconds
+  // Auto-slide effect
   useEffect(() => {
     const slideInterval = setInterval(() => {
       setCurrentSlide((prev) => (prev === slides.length - 1 ? 0 : prev + 1));
@@ -53,20 +49,24 @@ const Home = () => {
     return () => clearInterval(slideInterval);
   }, []);
 
+
+  // === CATEGORY DATA (With Links) ===
   const categories = [
-    { name: "Fruits & Vegetables", icon: Apple, hasSub: true },
-    { name: "Meats & Seafood", icon: Beef, hasSub: false },
-    { name: "Breakfast & Dairy", icon: Egg, hasSub: false },
-    { name: "Beverages", icon: Coffee, hasSub: true },
-    { name: "Breads & Bakery", icon: Cookie, hasSub: false },
-    { name: "Frozen Foods", icon: Snowflake, hasSub: false },
-    { name: "Biscuits & Snacks", icon: Candy, hasSub: false },
-    { name: "Grocery & Staples", icon: Wheat, hasSub: false },
+    { name: "Fruits & Vegetables", icon: Apple, hasSub: true, link: "/category/fruits-vegetables" },
+    { name: "Meats & Seafood", icon: Beef, hasSub: false, link: "/category/meats-seafood" },
+    { name: "Breakfast & Dairy", icon: Egg, hasSub: false, link: "/category/breakfast-dairy" },
+    { name: "Beverages", icon: Coffee, hasSub: true, link: "/category/beverages" },
+    { name: "Breads & Bakery", icon: Cookie, hasSub: false, link: "/category/bakery" },
+    { name: "Frozen Foods", icon: Snowflake, hasSub: false, link: "/category/frozen" },
+    { name: "Biscuits & Snacks", icon: Candy, hasSub: false, link: "/category/snacks" },
+    { name: "Grocery & Staples", icon: Wheat, hasSub: false, link: "/category/grocery" },
   ];
 
   return (
     <div className="min-h-screen bg-white font-sans text-gray-700">
       
+      {/* ================= HEADER SECTION ================= */}
+
       {/* 1. Top Notification Bar */}
       <div className="bg-[#233a95] text-white text-center py-2 text-sm font-medium">
         Due to the <span className="font-bold">COVID 19</span> epidemic, orders may be processed with a slight delay
@@ -123,6 +123,7 @@ const Home = () => {
       <div className="container mx-auto px-4 mb-6">
         <div className="flex flex-col lg:flex-row items-center gap-6 relative z-50">
           
+          {/* === DROPDOWN MENU === */}
           <div className="group relative w-full lg:w-auto">
             <button className="w-full lg:w-64 bg-[#2bbef9] hover:bg-[#209dd0] text-white px-6 py-4 rounded-full flex items-center justify-between font-bold transition shadow-sm">
               <div className="flex items-center gap-3">
@@ -132,30 +133,34 @@ const Home = () => {
               <ChevronDown size={16} />
             </button>
 
+            {/* Dropdown List */}
             <div className="hidden group-hover:block absolute top-full left-0 w-full lg:w-64 bg-white border border-gray-200 shadow-xl rounded-xl pt-2 pb-2 mt-2">
               <ul className="flex flex-col">
                 {categories.map((cat, index) => (
-                  <li key={index} className="group/item flex items-center justify-between px-6 py-3 hover:text-[#2bbef9] cursor-pointer transition-colors">
-                    <div className="flex items-center gap-4 text-gray-500 group-hover/item:text-[#2bbef9]">
-                      <cat.icon size={20} strokeWidth={1.5} />
-                      <span className="font-medium text-sm text-gray-700 group-hover/item:text-[#2bbef9]">{cat.name}</span>
-                    </div>
-                    {cat.hasSub && <ChevronRight size={16} className="text-gray-400" />}
-                  </li>
+                  <Link key={index} to={cat.link}>
+                    <li className="group/item flex items-center justify-between px-6 py-3 hover:text-[#2bbef9] cursor-pointer transition-colors">
+                      <div className="flex items-center gap-4 text-gray-500 group-hover/item:text-[#2bbef9]">
+                        <cat.icon size={20} strokeWidth={1.5} />
+                        <span className="font-medium text-sm text-gray-700 group-hover/item:text-[#2bbef9]">{cat.name}</span>
+                      </div>
+                      {cat.hasSub && <ChevronRight size={16} className="text-gray-400" />}
+                    </li>
+                  </Link>
                 ))}
               </ul>
             </div>
           </div>
 
+          {/* === NAV LINKS === */}
           <nav className="flex flex-wrap items-center gap-8 text-xs font-bold uppercase text-gray-600 w-full lg:w-auto tracking-wide">
             <div className="flex items-center gap-1 bg-blue-50 text-blue-500 px-3 py-2 rounded-full cursor-pointer">
                <span>HOME</span>
                <ChevronDown size={14} />
             </div>
-            <a href="#" className="hover:text-blue-500 flex items-center gap-1">SHOP <ChevronDown size={14} /></a>
-            <a href="#" className="hover:text-blue-500 flex items-center gap-2"><Beef size={16} /> MEATS & SEAFOOD</a>
-            <a href="#" className="hover:text-blue-500 flex items-center gap-2"><Cookie size={16} /> BAKERY</a>
-            <a href="#" className="hover:text-blue-500 flex items-center gap-2"><Coffee size={16} /> BEVERAGES</a>
+            <Link to="/shop" className="hover:text-blue-500 flex items-center gap-1">SHOP <ChevronDown size={14} /></Link>
+            <Link to="/category/meats" className="hover:text-blue-500 flex items-center gap-2"><Beef size={16} /> MEATS & SEAFOOD</Link>
+            <Link to="/category/bakery" className="hover:text-blue-500 flex items-center gap-2"><Cookie size={16} /> BAKERY</Link>
+            <Link to="/category/beverages" className="hover:text-blue-500 flex items-center gap-2"><Coffee size={16} /> BEVERAGES</Link>
             <a href="#" className="hover:text-blue-500">BLOG</a>
             <a href="#" className="hover:text-blue-500">CONTACT</a>
           </nav>
@@ -163,7 +168,7 @@ const Home = () => {
         </div>
       </div>
 
-      {/* 5. HERO SLIDER SECTION */}
+      {/* ================= HERO SLIDER SECTION ================= */}
       <div className="container mx-auto px-4 mb-12">
         <div className="relative w-full h-[350px] md:h-[500px] bg-gray-100 rounded-3xl overflow-hidden shadow-sm group z-0">
             
