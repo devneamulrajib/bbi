@@ -1,8 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
+import { ShopContext } from './context/ShopContext';
 import { Link } from 'react-router-dom';
-import { 
-  ArrowRight
-} from 'lucide-react';
+import { ArrowRight, ShoppingCart, Star } from 'lucide-react';
 
 // === IMPORT LOCAL IMAGES ===
 import banner1 from './assets/banner1.jpg';
@@ -10,8 +9,10 @@ import banner2 from './assets/banner2.jpg';
 import banner3 from './assets/banner3.jpg';
 
 const Home = () => {
+  const { products, currency, addToCart } = useContext(ShopContext);
   const [currentSlide, setCurrentSlide] = useState(0);
 
+  // --- HERO SLIDER CONFIG ---
   const slides = [
     { id: 1, image: banner1, subtitle: "EXCLUSIVE OFFER -20% OFF", title: "Specialist in the grocery store", price: "$7.99", buttonText: "Shop Now" },
     { id: 2, image: banner2, subtitle: "FRESH & ORGANIC", title: "Best Vegetables & Fruits Collection", price: "$5.99", buttonText: "Order Now" },
@@ -29,7 +30,7 @@ const Home = () => {
     <div className="min-h-screen bg-white font-sans text-gray-700">
       
       {/* ================= HERO SLIDER SECTION ================= */}
-      <div className="container mx-auto px-4 mb-12">
+      <div className="container mx-auto px-4 mb-12 mt-6">
         <div className="relative w-full h-[350px] md:h-[500px] bg-gray-100 rounded-3xl overflow-hidden shadow-sm group z-0">
             
             <div 
@@ -71,6 +72,66 @@ const Home = () => {
                 ></div>
               ))}
             </div>
+        </div>
+      </div>
+
+      {/* ================= PRODUCT COLLECTION SECTION ================= */}
+      <div className="container mx-auto px-4 pb-16">
+        <div className="text-center mb-10">
+            <h3 className="text-[#2bbef9] font-bold tracking-widest uppercase text-sm mb-2">Shop Now</h3>
+            <h2 className="text-3xl md:text-4xl font-bold text-[#233a95]">Popular Products</h2>
+            <p className="text-gray-400 mt-2 max-w-lg mx-auto">
+                Do not miss the current offers until the end of the season.
+            </p>
+        </div>
+
+        {/* --- Product Grid --- */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
+            {products.map((item, index) => (
+                <div key={index} className="group bg-white border border-gray-100 rounded-xl p-4 transition-all duration-300 hover:shadow-[0_10px_40px_-15px_rgba(0,0,0,0.1)] hover:-translate-y-1 relative overflow-hidden">
+                    
+                    {/* Discount Badge (Static example) */}
+                    <span className="absolute top-3 left-3 bg-red-500 text-white text-[10px] font-bold px-2 py-1 rounded">HOT</span>
+
+                    {/* Image Area */}
+                    <div className="h-40 sm:h-48 flex items-center justify-center mb-4 overflow-hidden rounded-lg bg-gray-50">
+                        <Link to={`/product/${item._id}`}>
+                             {/* Displaying first image from array */}
+                             <img src={item.image[0]} alt={item.name} className="h-full w-full object-contain group-hover:scale-110 transition-transform duration-500" />
+                        </Link>
+                    </div>
+
+                    {/* Content */}
+                    <div>
+                        <p className="text-[10px] text-gray-400 uppercase font-bold tracking-wider mb-1">{item.subCategory}</p>
+                        <Link to={`/product/${item._id}`}>
+                            <h3 className="font-bold text-gray-700 text-sm md:text-base mb-2 line-clamp-2 hover:text-[#2bbef9] transition-colors h-10">
+                                {item.name}
+                            </h3>
+                        </Link>
+                        
+                        {/* Rating Mockup */}
+                        <div className="flex items-center gap-1 mb-2">
+                            {[...Array(5)].map((_, i) => (
+                                <Star key={i} size={12} className="fill-yellow-400 text-yellow-400" />
+                            ))}
+                            <span className="text-xs text-gray-400 ml-1">(4.5)</span>
+                        </div>
+
+                        {/* Price & Add Button */}
+                        <div className="flex items-center justify-between mt-3">
+                            <p className="text-lg font-bold text-[#D51243]">{currency}{item.price}</p>
+                            
+                            <button 
+                                onClick={() => addToCart(item._id, item.sizes[0] || 'M')} 
+                                className="h-10 w-10 rounded-full bg-blue-50 text-[#233a95] flex items-center justify-center hover:bg-[#233a95] hover:text-white transition-colors"
+                            >
+                                <ShoppingCart size={18} />
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            ))}
         </div>
       </div>
       

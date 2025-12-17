@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Outlet, useLocation } from 'react-router-dom';
+import { Routes, Route, Outlet, useLocation } from 'react-router-dom'; // Removed 'BrowserRouter as Router'
 
 // Import all your pages
 import Header from './Header';
@@ -10,8 +10,6 @@ import Contact from './Contact';
 import Blog from './Blog';
 
 // --- LAYOUT COMPONENT ---
-// This wrapper ensures the Header is always visible
-// and the page scrolls to the top when you click a link.
 const Layout = () => {
   const { pathname } = useLocation();
 
@@ -24,7 +22,7 @@ const Layout = () => {
     <>
       <Header />
       <div className="min-h-screen">
-        <Outlet /> {/* This renders the child page (Home, Blog, etc.) */}
+        <Outlet />
       </div>
     </>
   );
@@ -32,7 +30,6 @@ const Layout = () => {
 
 function App() {
   return (
-    <Router>
       <Routes>
         {/* 1. Login Page (No Header) */}
         <Route path="/login" element={<Login />} />
@@ -45,7 +42,6 @@ function App() {
           <Route path="contact" element={<Contact />} />
         </Route>
       </Routes>
-    </Router>
   );
 }
 
