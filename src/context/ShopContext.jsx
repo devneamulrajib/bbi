@@ -13,10 +13,12 @@ const ShopContextProvider = (props) => {
     const navigate = useNavigate();
 
     const [products, setProducts] = useState([]);
+    const [categories, setCategories] = useState([]); // <--- NEW STATE FOR CATEGORIES
     const [token, setToken] = useState("");
     const [cartItems, setCartItems] = useState({});
     const [search, setSearch] = useState("");
     const [showSearch, setShowSearch] = useState(false);
+    const [featurePoster, setFeaturePoster] = useState(null);
 
     // 1. Add to Cart Function
     const addToCart = async (itemId, size) => {
@@ -89,13 +91,15 @@ const ShopContextProvider = (props) => {
         let totalAmount = 0;
         for (const items in cartItems) {
             let itemInfo = products.find((product) => product._id === items);
-            for (const item in cartItems[items]) {
-                try {
-                    if (cartItems[items][item] > 0) {
-                        totalAmount += itemInfo.price * cartItems[items][item];
+            if (itemInfo) { // Safety check to ensure product exists
+                for (const item in cartItems[items]) {
+                    try {
+                        if (cartItems[items][item] > 0) {
+                            totalAmount += itemInfo.price * cartItems[items][item];
+                        }
+                    } catch (error) {
+                        console.log(error);
                     }
-                } catch (error) {
-                    console.log(error);
                 }
             }
         }
@@ -117,7 +121,22 @@ const ShopContextProvider = (props) => {
         }
     }
 
-    // 6. Fetch User Cart (When page reloads)
+    // 6. Fetch Categories from Backend (NEW FUNCTION)
+    const getCategoriesData = async () => {
+        try {
+            const response = await axios.get(backendUrl + '/api/category/list');
+            if (response.data.success) {
+                setCategories(response.data.categories);
+            } else {
+                toast.error(response.data.message);
+            }
+        } catch (error) {
+            console.log(error);
+            toast.error(error.message);
+        }
+    }
+
+    // 7. Fetch User Cart (When page reloads)
     const getUserCart = async (token) => {
         try {
             const response = await axios.post(backendUrl + '/api/cart/get', {}, { headers: { token } });
@@ -130,9 +149,19 @@ const ShopContextProvider = (props) => {
         }
     }
 
+    // Add function
+    const getFeaturePoster = async () => {
+        try {
+            const response = await axios.get(backendUrl + '/api/feature/get');
+            if (response.data.success) setFeaturePoster(response.data.feature);
+        } catch (error) { console.log(error); }
+    }
+
     // Initial Load
     useEffect(() => {
         getProductsData();
+        getCategoriesData();
+        getFeaturePoster();
     }, []);
 
     // Handle Token on Reload
@@ -144,12 +173,13 @@ const ShopContextProvider = (props) => {
     }, [token]);
 
     const value = {
-        products, currency, delivery_fee,
+        products, categories, // <--- Export 'categories' here
+        currency, delivery_fee,
         search, setSearch, showSearch, setShowSearch,
         cartItems, addToCart, setCartItems,
         getCartCount, updateQuantity, getCartAmount,
         navigate, backendUrl,
-        token, setToken
+        token, setToken, featurePoster
     }
 
     return (

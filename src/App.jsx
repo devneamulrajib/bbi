@@ -8,6 +8,7 @@ import Login from './Login';
 import CategoryPage from './CategoryPage';
 import Contact from './Contact';
 import Blog from './Blog';
+import BestSellerPage from './BestSellerPage';
 
 // --- LAYOUT COMPONENT ---
 const Layout = () => {
@@ -38,6 +39,7 @@ function App() {
         <Route path="/" element={<Layout />}>
           <Route index element={<Home />} />
           <Route path="category/:slug" element={<CategoryPage />} />
+          <Route path="bestsellers" element={<BestSellerPage />} />
           <Route path="blog" element={<Blog />} />
           <Route path="contact" element={<Contact />} />
         </Route>

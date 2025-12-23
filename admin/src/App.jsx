@@ -6,8 +6,10 @@ import Add from './pages/Add'
 import List from './pages/List'
 import Orders from './pages/Orders'
 import Login from './components/Login'
+import Category from './pages/Category' // Ensure this file exists in pages folder
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import Poster from './pages/Poster'
 
 export const backendUrl = import.meta.env.VITE_BACKEND_URL
 
@@ -34,6 +36,8 @@ const App = () => {
                 <Route path='/add' element={<Add token={token} />} />
                 <Route path='/list' element={<List token={token} />} />
                 <Route path='/orders' element={<Orders token={token} />} />
+                <Route path='/poster' element={<Poster token={token} />} />
+                <Route path='/category' element={<Category token={token} />} /> {/* <--- Added this Route */}
               </Routes>
             </div>
           </div>

@@ -1,6 +1,7 @@
 import React from 'react'
 import { NavLink } from 'react-router-dom'
-import { PlusCircle, List, ShoppingBag } from 'lucide-react'
+import { PlusCircle, List, ShoppingBag, FolderPlus } from 'lucide-react' // Import FolderPlus icon
+import { LayoutTemplate } from 'lucide-react'
 
 const Sidebar = () => {
   return (
@@ -12,8 +13,14 @@ const Sidebar = () => {
             <NavLink className='flex items-center gap-3 border border-gray-300 border-r-0 px-3 py-2 rounded-l' to="/list">
                 <List size={20} /><p className='hidden md:block'>List Items</p>
             </NavLink>
+             <NavLink className='flex items-center gap-3 border border-gray-300 border-r-0 px-3 py-2 rounded-l' to="/category">
+                <FolderPlus size={20} /><p className='hidden md:block'>Categories</p>
+            </NavLink>
             <NavLink className='flex items-center gap-3 border border-gray-300 border-r-0 px-3 py-2 rounded-l' to="/orders">
                 <ShoppingBag size={20} /><p className='hidden md:block'>Orders</p>
+            </NavLink>
+            <NavLink className='flex items-center gap-3 border border-gray-300 border-r-0 px-3 py-2 rounded-l' to="/poster">
+                <LayoutTemplate size={20} /><p className='hidden md:block'>Feature Poster</p>
             </NavLink>
         </div>
     </div>

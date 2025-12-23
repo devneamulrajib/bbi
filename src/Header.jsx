@@ -1,27 +1,43 @@
-import React from 'react';
+import React, { useContext } from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import { ShopContext } from './context/ShopContext';
 import { 
   ShieldCheck, Search, User, ShoppingBag, Menu, ChevronDown, ChevronRight, 
-  Apple, Beef, Egg, Coffee, Cookie, Snowflake, Candy, Wheat, Flame
+  Apple, Beef, Egg, Coffee, Cookie, Snowflake, Candy, Wheat, Flame, FolderOpen
 } from 'lucide-react';
 
 const Header = () => {
   const location = useLocation();
+  const { categories, getCartCount } = useContext(ShopContext);
 
   // Helper to check active link
   const isActive = (path) => location.pathname === path;
 
-  // Dropdown Data
-  const categories = [
-    { name: "Fruits & Vegetables", icon: Apple, link: "/category/fruits-vegetables" },
-    { name: "Meats & Seafood", icon: Beef, link: "/category/meats-seafood" },
-    { name: "Breakfast & Dairy", icon: Egg, link: "/category/breakfast-dairy" },
-    { name: "Beverages", icon: Coffee, link: "/category/beverages" },
-    { name: "Breads & Bakery", icon: Cookie, link: "/category/bakery" },
-    { name: "Frozen Foods", icon: Snowflake, link: "/category/frozen" },
-    { name: "Biscuits & Snacks", icon: Candy, link: "/category/snacks" },
-    { name: "Grocery & Staples", icon: Wheat, link: "/category/grocery" },
-  ];
+  // --- HELPER: Slug Generator (Crucial for URL matching) ---
+  // Converts "Fruits & Vegetables" -> "fruits-vegetables"
+  const createSlug = (name) => {
+    if (!name) return "";
+    return name
+      .toLowerCase()
+      .replace(/&/g, '')        // Remove &
+      .replace(/[^\w\s]/gi, '')  // Remove special chars
+      .trim()
+      .replace(/\s+/g, '-');     // Replace spaces with dashes
+  };
+
+  // Function to get Icon based on Category Name
+  const getCategoryIcon = (name) => {
+    const lowerName = name.toLowerCase();
+    if (lowerName.includes('fruit') || lowerName.includes('vegetable')) return Apple;
+    if (lowerName.includes('meat') || lowerName.includes('seafood')) return Beef;
+    if (lowerName.includes('breakfast') || lowerName.includes('dairy')) return Egg;
+    if (lowerName.includes('beverage') || lowerName.includes('drink')) return Coffee;
+    if (lowerName.includes('bread') || lowerName.includes('bakery')) return Cookie;
+    if (lowerName.includes('frozen')) return Snowflake;
+    if (lowerName.includes('snack') || lowerName.includes('biscuit')) return Candy;
+    if (lowerName.includes('grocery')) return Wheat;
+    return FolderOpen; // Default Icon
+  };
 
   return (
     <>
@@ -63,10 +79,16 @@ const Header = () => {
                </div>
              </Link>
             <div className="font-bold text-gray-900 hidden sm:block">$0.00</div>
-            <div className="relative bg-orange-100 rounded-full p-3 cursor-pointer hover:bg-orange-200">
-              <ShoppingBag size={20} className="text-red-500" />
-              <span className="absolute -top-1 -right-1 bg-red-600 text-white text-[10px] font-bold h-5 w-5 flex items-center justify-center rounded-full border-2 border-white">0</span>
-            </div>
+            
+            {/* Cart Icon with Live Count */}
+            <Link to='/cart'>
+              <div className="relative bg-orange-100 rounded-full p-3 cursor-pointer hover:bg-orange-200">
+                <ShoppingBag size={20} className="text-red-500" />
+                <span className="absolute -top-1 -right-1 bg-red-600 text-white text-[10px] font-bold h-5 w-5 flex items-center justify-center rounded-full border-2 border-white">
+                  {getCartCount()}
+                </span>
+              </div>
+            </Link>
           </div>
         </div>
       </div>
@@ -75,20 +97,33 @@ const Header = () => {
       <div className="container mx-auto px-4 mb-6">
         <div className="flex flex-col lg:flex-row items-center gap-8 relative z-50">
           
-          {/* Dropdown Button */}
+          {/* Dropdown Button (DYNAMIC FROM DB) */}
           <div className="group relative w-full lg:w-auto">
             <button className="w-full lg:w-64 bg-[#2bbef9] hover:bg-[#209dd0] text-white px-6 py-4 rounded-full flex items-center justify-between font-bold transition shadow-sm">
               <div className="flex items-center gap-3"><Menu size={20} /><span>ALL CATEGORIES</span></div><ChevronDown size={16} />
             </button>
+            
             <div className="hidden group-hover:block absolute top-full left-0 w-full lg:w-64 bg-white border border-gray-200 shadow-xl rounded-xl pt-2 pb-2 mt-2">
-              <ul className="flex flex-col">
-                {categories.map((cat, index) => (
-                  <Link key={index} to={cat.link}>
-                    <li className="group/item flex items-center justify-between px-6 py-3 hover:text-[#2bbef9] cursor-pointer transition-colors">
-                      <div className="flex items-center gap-4 text-gray-500 group-hover/item:text-[#2bbef9]"><cat.icon size={20} strokeWidth={1.5} /><span className="font-medium text-sm text-gray-700 group-hover/item:text-[#2bbef9]">{cat.name}</span></div><ChevronRight size={16} className="text-gray-400" />
-                    </li>
-                  </Link>
-                ))}
+              <ul className="flex flex-col max-h-[400px] overflow-y-auto">
+                {categories.length > 0 ? categories.map((cat, index) => {
+                  const IconComponent = getCategoryIcon(cat.name);
+                  // Apply Slug Creator here
+                  const slugLink = `/category/${createSlug(cat.name)}`;
+                  
+                  return (
+                    <Link key={index} to={slugLink}>
+                      <li className="group/item flex items-center justify-between px-6 py-3 hover:text-[#2bbef9] cursor-pointer transition-colors border-b border-gray-50 last:border-0">
+                        <div className="flex items-center gap-4 text-gray-500 group-hover/item:text-[#2bbef9]">
+                          <IconComponent size={20} strokeWidth={1.5} />
+                          <span className="font-medium text-sm text-gray-700 group-hover/item:text-[#2bbef9] capitalize">{cat.name}</span>
+                        </div>
+                        <ChevronRight size={16} className="text-gray-400" />
+                      </li>
+                    </Link>
+                  )
+                }) : (
+                   <li className="px-6 py-3 text-sm text-gray-400">Loading categories...</li>
+                )}
               </ul>
             </div>
           </div>
@@ -106,9 +141,18 @@ const Header = () => {
                <ChevronRight size={12} className="text-gray-300" />
             </div>
 
-            <Link to="/category/meats-seafood" className={`flex items-center gap-2 border border-gray-200 rounded-full px-4 py-2 ${isActive('/category/meats-seafood') ? 'border-blue-500 text-blue-600 font-bold bg-blue-50' : 'hover:border-[#2bbef9] hover:text-[#2bbef9] bg-white transition-all'}`}><Beef size={16} className="text-gray-400 group-hover:text-[#2bbef9]" /> <span>MEATS</span></Link>
-            <Link to="/category/bakery" className={`flex items-center gap-2 border border-gray-200 rounded-full px-4 py-2 ${isActive('/category/bakery') ? 'border-blue-500 text-blue-600 font-bold bg-blue-50' : 'hover:border-[#2bbef9] hover:text-[#2bbef9] bg-white transition-all'}`}><Cookie size={16} className="text-gray-400 group-hover:text-[#2bbef9]" /> <span>BAKERY</span></Link>
-            <Link to="/category/beverages" className={`flex items-center gap-2 border border-gray-200 rounded-full px-4 py-2 ${isActive('/category/beverages') ? 'border-blue-500 text-blue-600 font-bold bg-blue-50' : 'hover:border-[#2bbef9] hover:text-[#2bbef9] bg-white transition-all'}`}><Coffee size={16} className="text-gray-400 group-hover:text-[#2bbef9]" /> <span>DRINKS</span></Link>
+            {/* Dynamic Buttons for first 3 categories */}
+            {categories.slice(0, 3).map((cat, idx) => {
+               const IconComponent = getCategoryIcon(cat.name);
+               const slugLink = `/category/${createSlug(cat.name)}`;
+               
+               return (
+                  <Link key={idx} to={slugLink} className={`flex items-center gap-2 border border-gray-200 rounded-full px-4 py-2 hover:border-[#2bbef9] hover:text-[#2bbef9] bg-white transition-all`}>
+                      <IconComponent size={16} className="text-gray-400 group-hover:text-[#2bbef9]" /> 
+                      <span className='uppercase'>{cat.name}</span>
+                  </Link>
+               )
+            })}
 
             <Link to="/blog" className={`hover:text-blue-500 ml-2 ${isActive('/blog') ? 'text-blue-600 font-bold' : ''}`}>BLOG</Link>
             <Link to="/contact" className={`hover:text-blue-500 ${isActive('/contact') ? 'text-blue-600 font-bold' : ''}`}>CONTACT</Link>
