@@ -1,31 +1,36 @@
-import React, { useContext } from 'react';
+import React, { useContext, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { ShopContext } from './context/ShopContext';
 import { 
   ShieldCheck, Search, User, ShoppingBag, Menu, ChevronDown, ChevronRight, 
-  Apple, Beef, Egg, Coffee, Cookie, Snowflake, Candy, Wheat, Flame, FolderOpen
+  Apple, Beef, Egg, Coffee, Cookie, Snowflake, Candy, Wheat, Flame, FolderOpen, LogOut
 } from 'lucide-react';
 
 const Header = () => {
   const location = useLocation();
-  const { categories, getCartCount } = useContext(ShopContext);
+  const { categories, getCartCount, token, setToken, navigate } = useContext(ShopContext);
 
-  // Helper to check active link
   const isActive = (path) => location.pathname === path;
 
-  // --- HELPER: Slug Generator (Crucial for URL matching) ---
-  // Converts "Fruits & Vegetables" -> "fruits-vegetables"
+  // --- LOGOUT FUNCTION ---
+  const logout = () => {
+      localStorage.removeItem('token');
+      setToken("");
+      navigate('/login');
+  }
+
+  // --- HELPER: Slug Generator ---
   const createSlug = (name) => {
     if (!name) return "";
     return name
       .toLowerCase()
-      .replace(/&/g, '')        // Remove &
-      .replace(/[^\w\s]/gi, '')  // Remove special chars
+      .replace(/&/g, '')
+      .replace(/[^\w\s]/gi, '')
       .trim()
-      .replace(/\s+/g, '-');     // Replace spaces with dashes
+      .replace(/\s+/g, '-');
   };
 
-  // Function to get Icon based on Category Name
+  // --- HELPER: Icon Selector ---
   const getCategoryIcon = (name) => {
     const lowerName = name.toLowerCase();
     if (lowerName.includes('fruit') || lowerName.includes('vegetable')) return Apple;
@@ -36,7 +41,7 @@ const Header = () => {
     if (lowerName.includes('frozen')) return Snowflake;
     if (lowerName.includes('snack') || lowerName.includes('biscuit')) return Candy;
     if (lowerName.includes('grocery')) return Wheat;
-    return FolderOpen; // Default Icon
+    return FolderOpen;
   };
 
   return (
@@ -49,13 +54,9 @@ const Header = () => {
       {/* Info Bar */}
       <div className="border-b border-gray-100 hidden md:block">
         <div className="container mx-auto px-4 py-2 flex justify-end items-center space-x-6 text-sm text-gray-600">
-          <div className="flex items-center gap-2">
-            <ShieldCheck size={16} /> <span>100% Secure delivery without contacting the courier</span>
-          </div>
+          <div className="flex items-center gap-2"><ShieldCheck size={16} /> <span>100% Secure delivery</span></div>
           <div className="h-4 w-px bg-gray-300"></div>
-          <div className="flex items-center gap-1">
-            <span>Need help? Call Us:</span> <span className="text-blue-600 font-bold">+ 0020 500</span>
-          </div>
+          <div className="flex items-center gap-1"><span>Need help? Call Us:</span> <span className="text-blue-600 font-bold">+ 0020 500</span></div>
         </div>
       </div>
 
@@ -73,21 +74,45 @@ const Header = () => {
           </div>
 
           <div className="flex items-center gap-5 min-w-max">
-             <Link to="/login">
-               <div className="rounded-full border border-gray-300 p-2 cursor-pointer hover:bg-blue-50 hover:border-blue-300 transition group">
-                 <User size={24} className="text-gray-700 group-hover:text-blue-600" />
-               </div>
-             </Link>
+             
+             {/* USER ACCOUNT LOGIC */}
+             {token ? (
+                 <div className='group relative'>
+                    <Link to="/my-profile">
+                        <div className="rounded-full border border-gray-300 p-2 cursor-pointer hover:bg-blue-50 transition bg-blue-50 border-blue-200">
+                            <User size={24} className="text-blue-600" />
+                        </div>
+                    </Link>
+                    {/* Dropdown Menu */}
+                    <div className='group-hover:block hidden absolute dropdown-menu right-0 pt-4 z-50'>
+                        <div className='flex flex-col gap-2 w-36 py-3 px-5 bg-white text-gray-500 rounded shadow-lg border border-gray-100'>
+                            <p className='text-xs text-gray-400 mb-1 uppercase'>Account</p>
+                            <Link to="/my-profile" className='cursor-pointer hover:text-[#233a95] font-medium text-sm flex items-center gap-2'>
+                                <User size={14}/> Profile
+                            </Link>
+                            <hr className='border-gray-100 my-1'/>
+                            <p onClick={logout} className='cursor-pointer hover:text-red-500 font-medium text-sm flex items-center gap-2'>
+                                <LogOut size={14}/> Logout
+                            </p>
+                        </div>
+                    </div>
+                 </div>
+             ) : (
+                 <Link to="/login">
+                   <div className="rounded-full border border-gray-300 p-2 cursor-pointer hover:bg-blue-50 transition group">
+                     <User size={24} className="text-gray-700 group-hover:text-blue-600" />
+                   </div>
+                 </Link>
+             )}
+
             <div className="font-bold text-gray-900 hidden sm:block">$0.00</div>
             
-            {/* Cart Icon with Live Count */}
+            {/* CART LINK */}
             <Link to='/cart'>
-              <div className="relative bg-orange-100 rounded-full p-3 cursor-pointer hover:bg-orange-200">
-                <ShoppingBag size={20} className="text-red-500" />
-                <span className="absolute -top-1 -right-1 bg-red-600 text-white text-[10px] font-bold h-5 w-5 flex items-center justify-center rounded-full border-2 border-white">
-                  {getCartCount()}
-                </span>
-              </div>
+                <div className="relative bg-orange-100 rounded-full p-3 cursor-pointer hover:bg-orange-200">
+                    <ShoppingBag size={20} className="text-red-500" />
+                    <span className="absolute -top-1 -right-1 bg-red-600 text-white text-[10px] font-bold h-5 w-5 flex items-center justify-center rounded-full border-2 border-white">{getCartCount()}</span>
+                </div>
             </Link>
           </div>
         </div>
@@ -97,7 +122,7 @@ const Header = () => {
       <div className="container mx-auto px-4 mb-6">
         <div className="flex flex-col lg:flex-row items-center gap-8 relative z-50">
           
-          {/* Dropdown Button (DYNAMIC FROM DB) */}
+          {/* Dropdown Button */}
           <div className="group relative w-full lg:w-auto">
             <button className="w-full lg:w-64 bg-[#2bbef9] hover:bg-[#209dd0] text-white px-6 py-4 rounded-full flex items-center justify-between font-bold transition shadow-sm">
               <div className="flex items-center gap-3"><Menu size={20} /><span>ALL CATEGORIES</span></div><ChevronDown size={16} />
@@ -107,7 +132,6 @@ const Header = () => {
               <ul className="flex flex-col max-h-[400px] overflow-y-auto">
                 {categories.length > 0 ? categories.map((cat, index) => {
                   const IconComponent = getCategoryIcon(cat.name);
-                  // Apply Slug Creator here
                   const slugLink = `/category/${createSlug(cat.name)}`;
                   
                   return (
@@ -141,7 +165,7 @@ const Header = () => {
                <ChevronRight size={12} className="text-gray-300" />
             </div>
 
-            {/* Dynamic Buttons for first 3 categories */}
+            {/* Dynamic Buttons */}
             {categories.slice(0, 3).map((cat, idx) => {
                const IconComponent = getCategoryIcon(cat.name);
                const slugLink = `/category/${createSlug(cat.name)}`;

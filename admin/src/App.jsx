@@ -10,6 +10,9 @@ import Category from './pages/Category' // Ensure this file exists in pages fold
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import Poster from './pages/Poster'
+import Edit from './pages/Edit'
+import HomeConfig from './pages/HomeConfig'
+import Content from './pages/Content';
 
 export const backendUrl = import.meta.env.VITE_BACKEND_URL
 
@@ -37,6 +40,9 @@ const App = () => {
                 <Route path='/list' element={<List token={token} />} />
                 <Route path='/orders' element={<Orders token={token} />} />
                 <Route path='/poster' element={<Poster token={token} />} />
+                <Route path='/edit' element={<Edit token={token} />} />
+                <Route path='/config' element={<HomeConfig token={token} />} />
+                <Route path='/content' element={<Content token={token} />} />
                 <Route path='/category' element={<Category token={token} />} /> {/* <--- Added this Route */}
               </Routes>
             </div>

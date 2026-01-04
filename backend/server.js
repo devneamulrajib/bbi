@@ -9,6 +9,8 @@ import cartRouter from './routes/cartRoute.js';
 import orderRouter from './routes/orderRoute.js';
 import categoryRouter from './routes/categoryRoute.js';
 import featureRouter from './routes/featureRoute.js';
+import configRouter from './routes/configRoute.js';
+import pageRouter from './routes/pageRoute.js';
 
 
 // App Config
@@ -47,6 +49,8 @@ app.use('/api/cart', cartRouter);
 app.use('/api/order', orderRouter);
 app.use('/api/category', categoryRouter);
 app.use('/api/feature', featureRouter);
+app.use('/api/config', configRouter);
+app.use('/api/pages', pageRouter); 
 
 app.get('/', (req, res) => {
     res.send('API is running...');

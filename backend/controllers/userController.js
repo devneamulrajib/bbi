@@ -3,17 +3,19 @@ import validator from "validator";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 
-// Helper function to create Token
 const createToken = (id) => {
     return jwt.sign({ id }, process.env.JWT_SECRET);
 }
 
-// Route for User Login
+// Route for User Login (Email OR Phone)
 const loginUser = async (req, res) => {
     try {
-        const { email, password } = req.body;
+        const { email, password } = req.body; // 'email' here acts as "Email or Phone" input
 
-        const user = await userModel.findOne({ email });
+        // Check if input matches an email or a phone number
+        const user = await userModel.findOne({ 
+            $or: [ { email: email }, { phone: email } ] 
+        });
 
         if (!user) {
             return res.json({ success: false, message: "User doesn't exist" });
@@ -34,37 +36,30 @@ const loginUser = async (req, res) => {
     }
 }
 
-// Route for User Registration
+// Route for User Registration (Detailed)
 const registerUser = async (req, res) => {
     try {
-        const { name, email, password } = req.body;
+        const { name, email, phone, password, address } = req.body;
 
-        // Check if user already exists
+        // Check exists
         const exists = await userModel.findOne({ email });
-        if (exists) {
-            return res.json({ success: false, message: "User already exists" });
-        }
+        if (exists) return res.json({ success: false, message: "User already exists" });
 
-        // Validate email format & strong password
-        if (!validator.isEmail(email)) {
-            return res.json({ success: false, message: "Please enter a valid email" });
-        }
-        if (password.length < 8) {
-            return res.json({ success: false, message: "Please enter a strong password" });
-        }
+        // Validations
+        if (!validator.isEmail(email)) return res.json({ success: false, message: "Invalid email" });
+        if (password.length < 8) return res.json({ success: false, message: "Weak password" });
 
-        // Hashing user password
+        // Hash
         const salt = await bcrypt.genSalt(10);
         const hashedPassword = await bcrypt.hash(password, salt);
 
         const newUser = new userModel({
-            name,
-            email,
-            password: hashedPassword
+            name, email, phone,
+            password: hashedPassword,
+            address: address || {} // Expecting object { street, city, zip... }
         });
 
         const user = await newUser.save();
-
         const token = createToken(user._id);
         res.json({ success: true, token });
 
@@ -74,7 +69,39 @@ const registerUser = async (req, res) => {
     }
 }
 
-// Route for Admin Login
+// Get User Profile Data
+const getUserProfile = async (req, res) => {
+    try {
+        const { userId } = req.body; // From middleware
+        const user = await userModel.findById(userId).select('-password');
+        res.json({ success: true, userData: user });
+    } catch (error) {
+        console.log(error);
+        res.json({ success: false, message: error.message });
+    }
+}
+
+// Update User Profile
+const updateProfile = async (req, res) => {
+    try {
+        const { userId, name, phone, address, password } = req.body;
+        const updateData = { name, phone, address };
+
+        if(password) {
+             const salt = await bcrypt.genSalt(10);
+             updateData.password = await bcrypt.hash(password, salt);
+        }
+
+        await userModel.findByIdAndUpdate(userId, updateData);
+        res.json({ success: true, message: "Profile Updated" });
+
+    } catch (error) {
+        console.log(error);
+        res.json({ success: false, message: error.message });
+    }
+}
+
+// Admin Login (No change)
 const adminLogin = async (req, res) => {
     try {
         const { email, password } = req.body;
@@ -90,4 +117,4 @@ const adminLogin = async (req, res) => {
     }
 }
 
-export { loginUser, registerUser, adminLogin };
+export { loginUser, registerUser, adminLogin, getUserProfile, updateProfile };

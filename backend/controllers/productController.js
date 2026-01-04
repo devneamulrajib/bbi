@@ -4,7 +4,13 @@ import productModel from "../models/productModel.js";
 // --- ADD PRODUCT ---
 const addProduct = async (req, res) => {
     try {
-        const { name, description, price, category, subCategory, sizes, bestseller } = req.body;
+        const { 
+            name, description, price, oldPrice, discount, rating, inStock,
+            category, subCategory, sizes, 
+            bestseller, trending, newArrival 
+        } = req.body;
+
+        // Image Upload Logic
         const image1 = req.files.image1 && req.files.image1[0];
         const image2 = req.files.image2 && req.files.image2[0];
         const image3 = req.files.image3 && req.files.image3[0];
@@ -19,14 +25,45 @@ const addProduct = async (req, res) => {
         );
 
         const productData = {
-            name, description, category, price: Number(price), 
-            subCategory: subCategory || "", bestseller: bestseller === "true", 
-            sizes: JSON.parse(sizes), image: imagesUrl, date: Date.now()
+            name, description, category, 
+            price: Number(price),
+            oldPrice: oldPrice ? Number(oldPrice) : 0,
+            discount: discount ? Number(discount) : 0,
+            rating: rating ? Number(rating) : 0,
+            inStock: inStock === "true" ? true : false,
+            subCategory: subCategory || "",
+            sizes: JSON.parse(sizes),
+            
+            // Flags
+            bestseller: bestseller === "true",
+            trending: trending === "true",
+            newArrival: newArrival === "true",
+            
+            image: imagesUrl,
+            date: Date.now()
         }
 
         const product = new productModel(productData);
         await product.save();
+
         res.json({ success: true, message: "Product Added" });
+    } catch (error) {
+        console.log(error);
+        res.json({ success: false, message: error.message });
+    }
+}
+
+// --- UPDATE PRODUCT (NEW) ---
+const updateProduct = async (req, res) => {
+    try {
+        const { id, ...updateData } = req.body;
+        
+        // Convert strings to booleans/numbers where needed
+        if(updateData.sizes) updateData.sizes = JSON.parse(updateData.sizes);
+        if(updateData.price) updateData.price = Number(updateData.price);
+        
+        await productModel.findByIdAndUpdate(id, updateData);
+        res.json({ success: true, message: "Product Updated" });
     } catch (error) {
         console.log(error);
         res.json({ success: false, message: error.message });
@@ -44,37 +81,13 @@ const listProducts = async (req, res) => {
     }
 }
 
-// --- REMOVE PRODUCT (DEBUG VERSION) ---
+// --- REMOVE PRODUCT ---
 const removeProduct = async (req, res) => {
-    // 1. Log that we reached the controller
-    console.log("------------------------------------------");
-    console.log("🔴 DELETE REQUEST RECEIVED");
-    console.log("🔹 Request Body:", req.body);
-
     try {
-        // 2. Validate ID
-        if (!req.body.id) {
-            console.log("❌ Error: No ID provided");
-            return res.json({ success: false, message: "No ID provided" });
-        }
-
-        // 3. Attempt Delete
-        console.log("🔹 Attempting to delete from MongoDB...");
-        const deleteResult = await productModel.findByIdAndDelete(req.body.id);
-        
-        console.log("🔹 MongoDB Result:", deleteResult);
-
-        if (deleteResult) {
-            console.log("✅ SUCCESS: Product deleted.");
-            res.json({ success: true, message: "Product Deleted" });
-        } else {
-            console.log("⚠️ WARNING: Product ID not found in DB (Already deleted?)");
-            // We return true anyway so the Frontend removes it from the list
-            res.json({ success: true, message: "Product was not found, but list updated." });
-        }
-
+        await productModel.findByIdAndDelete(req.body.id);
+        res.json({ success: true, message: "Product Removed" });
     } catch (error) {
-        console.log("❌ CRITICAL ERROR:", error);
+        console.log(error);
         res.json({ success: false, message: error.message });
     }
 }
@@ -91,4 +104,4 @@ const singleProduct = async (req, res) => {
     }
 }
 
-export { addProduct, listProducts, removeProduct, singleProduct };
+export { addProduct, listProducts, removeProduct, singleProduct, updateProduct };
