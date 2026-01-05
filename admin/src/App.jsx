@@ -13,6 +13,8 @@ import Poster from './pages/Poster'
 import Edit from './pages/Edit'
 import HomeConfig from './pages/HomeConfig'
 import Content from './pages/Content';
+import Users from './pages/Users'
+import ManageUser from './pages/ManageUser'
 
 export const backendUrl = import.meta.env.VITE_BACKEND_URL
 
@@ -43,6 +45,8 @@ const App = () => {
                 <Route path='/edit' element={<Edit token={token} />} />
                 <Route path='/config' element={<HomeConfig token={token} />} />
                 <Route path='/content' element={<Content token={token} />} />
+                <Route path='/users' element={<Users token={token} />} />
+                <Route path='/manage-user' element={<ManageUser token={token} />} />
                 <Route path='/category' element={<Category token={token} />} /> {/* <--- Added this Route */}
               </Routes>
             </div>

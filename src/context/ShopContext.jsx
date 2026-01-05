@@ -8,7 +8,7 @@ export const ShopContext = createContext();
 const ShopContextProvider = (props) => {
 
     const currency = "$";
-    const delivery_fee = 10;
+    // delivery_fee is now calculated dynamically below, not hardcoded here
     const backendUrl = import.meta.env.VITE_BACKEND_URL;
     const navigate = useNavigate();
 
@@ -22,11 +22,15 @@ const ShopContextProvider = (props) => {
     // Sidebar Banner State
     const [featurePoster, setFeaturePoster] = useState(null);
     
-    // Global Config State (Footer, Hot Deals, Testimonials)
+    // Global Config State (Footer, Hot Deals, Delivery Settings)
     const [config, setConfig] = useState(null);
 
-    // User Profile Data (New)
+    // User Profile Data
     const [userData, setUserData] = useState(null);
+
+    // --- NEW: PROMO STATE ---
+    const [discountAmount, setDiscountAmount] = useState(0);
+    const [couponCode, setCouponCode] = useState("");
 
     // 1. Add to Cart Function
     const addToCart = async (itemId, size) => {
@@ -116,6 +120,48 @@ const ShopContextProvider = (props) => {
         return totalAmount;
     }
 
+    // --- NEW: DYNAMIC DELIVERY FEE LOGIC ---
+    const getDeliveryFee = () => {
+        // Default to 10 if config hasn't loaded yet
+        let fee = 10; 
+        
+        if (config && config.delivery) {
+            fee = config.delivery.fee;
+            const subTotal = getCartAmount();
+            
+            // If cart is not empty and exceeds threshold, make delivery free
+            if (subTotal > 0 && subTotal >= config.delivery.freeDeliveryThreshold) {
+                return 0;
+            }
+        }
+        
+        // If cart is empty, fee is technically irrelevant but usually shown as 0 or standard
+        if (getCartAmount() === 0) return 0;
+
+        return fee;
+    }
+
+    // --- NEW: VERIFY PROMO CODE ---
+    const verifyPromo = async (code) => {
+        try {
+            const response = await axios.post(backendUrl + '/api/config/promo/check', { code });
+            if (response.data.success) {
+                const promo = response.data.promo;
+                setDiscountAmount(promo.value); // Currently supporting flat amount
+                setCouponCode(promo.code);
+                toast.success("Coupon Applied!");
+                return true;
+            } else {
+                toast.error(response.data.message);
+                return false;
+            }
+        } catch (error) {
+            console.log(error);
+            toast.error(error.message);
+            return false;
+        }
+    }
+
     // 5. Fetch Products
     const getProductsData = async () => {
         try {
@@ -176,7 +222,7 @@ const ShopContextProvider = (props) => {
         }
     }
 
-    // 10. Fetch User Profile Data (New)
+    // 10. Fetch User Profile Data
     const getUserData = async (authToken) => {
         try {
             const response = await axios.get(backendUrl + '/api/user/profile', { headers: { token: authToken } });
@@ -202,20 +248,23 @@ const ShopContextProvider = (props) => {
         if (!token && storedToken) {
             setToken(storedToken);
             getUserCart(storedToken);
-            getUserData(storedToken); // Load user data if logged in
+            getUserData(storedToken); 
         }
     }, [token]);
 
     const value = {
         products, categories, 
-        currency, delivery_fee,
+        currency, 
+        delivery_fee: getDeliveryFee(), // Calculated dynamically
         search, setSearch, showSearch, setShowSearch,
         cartItems, addToCart, setCartItems,
         getCartCount, updateQuantity, getCartAmount,
         navigate, backendUrl,
         token, setToken, 
         featurePoster, config,
-        userData, setUserData, getUserData // Export User Data logic
+        userData, setUserData, getUserData,
+        // Promo Values
+        verifyPromo, discountAmount, couponCode
     }
 
     return (

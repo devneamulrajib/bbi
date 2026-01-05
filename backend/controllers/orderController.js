@@ -30,10 +30,10 @@ const placeOrder = async (req, res) => {
     }
 }
 
-// All Orders data for Admin Panel
+// All Orders data for Admin Panel (Sorted Newest First)
 const allOrders = async (req, res) => {
     try {
-        const orders = await orderModel.find({});
+        const orders = await orderModel.find({}).sort({ date: -1 });
         res.json({ success: true, orders });
     } catch (error) {
         console.log(error);
@@ -41,11 +41,11 @@ const allOrders = async (req, res) => {
     }
 }
 
-// User Order Data for Frontend
+// User Order Data for Frontend (Sorted Newest First)
 const userOrders = async (req, res) => {
     try {
         const { userId } = req.body;
-        const orders = await orderModel.find({ userId });
+        const orders = await orderModel.find({ userId }).sort({ date: -1 });
         res.json({ success: true, orders });
     } catch (error) {
         console.log(error);
@@ -53,16 +53,43 @@ const userOrders = async (req, res) => {
     }
 }
 
-// Update Order Status from Admin Panel
+// Update Order Status OR Payment Status from Admin Panel
 const updateStatus = async (req, res) => {
     try {
-        const { orderId, status } = req.body;
-        await orderModel.findByIdAndUpdate(orderId, { status });
+        const { orderId, status, payment } = req.body;
+        
+        let updateData = {};
+        
+        // Update Order Status (e.g., Shipped, Delivered)
+        if (status) {
+            updateData.status = status;
+        }
+
+        // Update Payment Status (e.g., Paid/Unpaid)
+        // We check for undefined because payment can be 'false'
+        if (payment !== undefined) {
+            updateData.payment = payment;
+        }
+
+        await orderModel.findByIdAndUpdate(orderId, updateData);
         res.json({ success: true, message: 'Status Updated' });
+
     } catch (error) {
         console.log(error);
         res.json({ success: false, message: error.message });
     }
 }
 
-export { placeOrder, allOrders, userOrders, updateStatus };
+// Delete Order (Admin Only)
+const deleteOrder = async (req, res) => {
+    try {
+        const { orderId } = req.body;
+        await orderModel.findByIdAndDelete(orderId);
+        res.json({ success: true, message: "Order Deleted Successfully" });
+    } catch (error) {
+        console.log(error);
+        res.json({ success: false, message: error.message });
+    }
+}
+
+export { placeOrder, allOrders, userOrders, updateStatus, deleteOrder };
