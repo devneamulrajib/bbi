@@ -12,14 +12,30 @@ import featureRouter from './routes/featureRoute.js';
 import configRouter from './routes/configRoute.js';
 import pageRouter from './routes/pageRoute.js';
 
-
 // App Config
 const app = express();
 const PORT = process.env.PORT || 5000;
 
 // Middleware
 app.use(express.json());
-app.use(cors());
+
+// --- UPDATED CORS CONFIGURATION ---
+const allowedOrigins = [
+    'http://localhost:5173',           // Vite Localhost
+    'http://localhost:5174',           // Vite Admin Localhost
+    'http://localhost:3000',           // CRA Localhost
+    'https://babaibangladesh.com',     // Your Custom Domain
+    'https://www.babaibangladesh.com', // Your Custom Domain (www)
+    'https://babaibangladesh.vercel.app', // Your Vercel Frontend
+    // 👇 CRITICAL: Add your Admin Vercel Link here (Check Vercel for the exact link)
+    'https://babai-admin.vercel.app', 
+    'https://admin.babaibangladesh.com'
+];
+
+app.use(cors({
+    origin: allowedOrigins,
+    credentials: true
+}));
 
 // Database Connection
 const connectDB = async () => {
@@ -38,11 +54,7 @@ const connectDB = async () => {
 connectDB();
 connectCloudinary();
 
-// API Endpoints
-app.use('/api/user', userRouter);
-app.use('/api/product', productRouter);
-app.use('/api/cart', cartRouter);
-app.use('/api/order', orderRouter);
+// API Endpoints (Duplicates removed)
 app.use('/api/user', userRouter);
 app.use('/api/product', productRouter);
 app.use('/api/cart', cartRouter);
