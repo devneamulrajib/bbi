@@ -10,7 +10,7 @@ const Header = () => {
   const location = useLocation();
   const { categories, getCartCount, token, setToken, navigate, config } = useContext(ShopContext);
   
-  // State for Category Dropdown
+  // State for Category Dropdown (Mobile Friendly)
   const [showCategories, setShowCategories] = useState(false);
   const catMenuRef = useRef(null);
 
@@ -80,20 +80,21 @@ const Header = () => {
           {/* LOGO */}
           <Link to="/" className="shrink-0">
             {config?.logo ? (
-                <img src={config.logo} alt="Logo" className="h-8 md:h-20 object-contain" />
+                // Increased Size: h-12 on mobile, h-24 on desktop
+                <img src={config.logo} alt="Logo" className="h-12 md:h-24 object-contain" />
             ) : (
                 <h1 className="text-2xl md:text-4xl font-bold text-black tracking-tight">bacola</h1>
             )}
             <p className="text-xs text-gray-400 mt-1 hidden md:block">Online Grocery Shopping Center</p>
           </Link>
 
-          {/* SEARCH BAR */}
+          {/* SEARCH BAR (Flexible Width) */}
           <div className="flex-1 max-w-2xl mx-2 md:mx-auto bg-gray-100 rounded-lg flex items-center px-3 py-2 md:px-4 md:py-3 border border-gray-200">
             <input type="text" placeholder="Search..." className="bg-transparent flex-grow outline-none text-gray-600 placeholder-gray-400 text-xs md:text-base w-full"/>
             <Search className="text-gray-500 cursor-pointer shrink-0" size={18} />
           </div>
 
-          {/* ICONS */}
+          {/* ICONS AREA */}
           <div className="flex items-center gap-3 md:gap-5 shrink-0">
              
              {/* USER ACCOUNT */}
@@ -104,7 +105,7 @@ const Header = () => {
                             <User size={20} className="text-blue-600 md:w-6 md:h-6" />
                         </div>
                     </Link>
-                    {/* Dropdown */}
+                    {/* Dropdown Menu */}
                     <div className='group-hover:block hidden absolute dropdown-menu right-0 pt-4 z-50'>
                         <div className='flex flex-col gap-2 w-36 py-3 px-5 bg-white text-gray-500 rounded shadow-lg border border-gray-100'>
                             <p className='text-xs text-gray-400 mb-1 uppercase'>Account</p>
@@ -125,7 +126,7 @@ const Header = () => {
             {/* Price (Hidden on Mobile) */}
             <div className="font-bold text-gray-900 hidden lg:block">$0.00</div>
             
-            {/* CART */}
+            {/* CART LINK */}
             <Link to='/cart'>
                 <div className="relative bg-orange-100 rounded-full p-2 md:p-3 cursor-pointer hover:bg-orange-200">
                     <ShoppingBag size={20} className="text-red-500 md:w-6 md:h-6" />
@@ -143,8 +144,9 @@ const Header = () => {
         <div className="container mx-auto px-4">
             <div className="flex flex-col lg:flex-row lg:items-center gap-0 lg:gap-8 relative z-40">
             
-            {/* Dropdown Button */}
+            {/* Dropdown Button Area */}
             <div className="w-full lg:w-auto py-2 lg:py-0" ref={catMenuRef}>
+                {/* Toggle Button */}
                 <button 
                   onClick={() => setShowCategories(!showCategories)} 
                   className="w-full lg:w-64 bg-[#2bbef9] hover:bg-[#209dd0] text-white px-4 py-2.5 lg:py-3 rounded-full flex items-center justify-between font-bold transition shadow-sm text-sm md:text-base"
@@ -155,6 +157,7 @@ const Header = () => {
                   {showCategories ? <X size={16} /> : <ChevronDown size={16} />}
                 </button>
 
+                {/* Dropdown Menu */}
                 <div className={`${showCategories ? 'block' : 'hidden'} absolute top-full left-0 w-full lg:w-64 bg-white border border-gray-200 shadow-xl rounded-xl pt-2 pb-2 mt-1 z-50`}>
                   <ul className="flex flex-col max-h-[60vh] overflow-y-auto">
                       {categories.length > 0 ? categories.map((cat, index) => {
@@ -176,7 +179,7 @@ const Header = () => {
                 </div>
             </div>
 
-            {/* Nav Links (CLEANED UP - No extra buttons) */}
+            {/* Nav Links (Cleaned: Only Home, Blog, Contact) */}
             <nav className="flex items-center gap-4 md:gap-6 text-xs font-bold uppercase text-gray-600 w-full lg:w-auto tracking-wide overflow-x-auto whitespace-nowrap pb-2 lg:pb-0 hide-scrollbar">
                 <Link to="/" className={`hover:text-blue-500 ${isActive('/') ? 'text-blue-600' : ''}`}>HOME</Link>
                 <Link to="/blog" className={`hover:text-blue-500 ${isActive('/blog') ? 'text-blue-600' : ''}`}>BLOG</Link>

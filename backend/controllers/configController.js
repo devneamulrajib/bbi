@@ -51,7 +51,13 @@ const updateConfig = async (req, res) => {
             // Footer
             phone, playStore, appStore, facebook, instagram, tiktok,
             // Delivery Settings
-            deliveryFee, freeDeliveryThreshold
+            deliveryFee, freeDeliveryThreshold,
+            // NEW: Notification & Slider
+            notifyText, notifyActive,
+            sliderInterval,
+            s1Text, s1Link,
+            s2Text, s2Link,
+            s3Text, s3Link
         } = req.body;
         
         let config = await configModel.findOne({});
@@ -83,26 +89,43 @@ const updateConfig = async (req, res) => {
         if(deliveryFee !== undefined) config.delivery.fee = Number(deliveryFee);
         if(freeDeliveryThreshold !== undefined) config.delivery.freeDeliveryThreshold = Number(freeDeliveryThreshold);
 
-        // 6. Handle Images (Including LOGO)
-        // Using optional chaining/checks to prevent crashes if files aren't uploaded
-        const logo = req.files && req.files.logo && req.files.logo[0]; // <--- LOGO
-        const tImage = req.files && req.files.tImage && req.files.tImage[0];
-        const b1Image = req.files && req.files.b1Image && req.files.b1Image[0];
-        const b2Image = req.files && req.files.b2Image && req.files.b2Image[0];
+        // 6. Update Notification (NEW)
+        if(notifyText !== undefined) config.notification.text = notifyText;
+        if(notifyActive !== undefined) config.notification.isActive = notifyActive === "true";
 
-        // Upload Logo
+        // 7. Update Hero Slider Settings (NEW)
+        if(sliderInterval) config.heroSlider.interval = Number(sliderInterval);
+        
+        // Slide 1 Text/Link
+        if(s1Text) config.heroSlider.slide1.buttonText = s1Text;
+        if(s1Link) config.heroSlider.slide1.link = s1Link;
+        // Slide 2 Text/Link
+        if(s2Text) config.heroSlider.slide2.buttonText = s2Text;
+        if(s2Link) config.heroSlider.slide2.link = s2Link;
+        // Slide 3 Text/Link
+        if(s3Text) config.heroSlider.slide3.buttonText = s3Text;
+        if(s3Link) config.heroSlider.slide3.link = s3Link;
+
+        // 8. Handle Images
+        const logo = req.files?.logo?.[0];
+        const tImage = req.files?.tImage?.[0];
+        const b1Image = req.files?.b1Image?.[0];
+        const b2Image = req.files?.b2Image?.[0];
+        
+        // Slider Images (NEW)
+        const s1Img = req.files?.s1Img?.[0];
+        const s2Img = req.files?.s2Img?.[0];
+        const s3Img = req.files?.s3Img?.[0];
+
+        // Upload Logic
         if(logo) {
             const result = await cloudinary.uploader.upload(logo.path, { resource_type: 'image' });
             config.logo = result.secure_url;
         }
-
-        // Upload Testimonial Image
         if(tImage) {
             const result = await cloudinary.uploader.upload(tImage.path, { resource_type: 'image' });
             config.testimonial.image = result.secure_url;
         }
-
-        // Upload Banner Images
         if(b1Image) {
             const result = await cloudinary.uploader.upload(b1Image.path, { resource_type: 'image' });
             config.banner1.image = result.secure_url;
@@ -110,6 +133,20 @@ const updateConfig = async (req, res) => {
         if(b2Image) {
             const result = await cloudinary.uploader.upload(b2Image.path, { resource_type: 'image' });
             config.banner2.image = result.secure_url;
+        }
+
+        // Upload Slider Images
+        if(s1Img) {
+            const result = await cloudinary.uploader.upload(s1Img.path, { resource_type: 'image' });
+            config.heroSlider.slide1.image = result.secure_url;
+        }
+        if(s2Img) {
+            const result = await cloudinary.uploader.upload(s2Img.path, { resource_type: 'image' });
+            config.heroSlider.slide2.image = result.secure_url;
+        }
+        if(s3Img) {
+            const result = await cloudinary.uploader.upload(s3Img.path, { resource_type: 'image' });
+            config.heroSlider.slide3.image = result.secure_url;
         }
 
         await config.save();

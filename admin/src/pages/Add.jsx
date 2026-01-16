@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Upload } from 'lucide-react'
+import { Upload, Loader2 } from 'lucide-react'
 import axios from 'axios'
 import { backendUrl } from '../App'
 import { toast } from 'react-toastify'
@@ -36,6 +36,10 @@ const Add = ({ token }) => {
     // Sizes
     const [sizes, setSizes] = useState([]);
 
+    // LOADING & PROGRESS STATES
+    const [loading, setLoading] = useState(false);
+    const [progress, setProgress] = useState(0);
+
     // 1. Fetch Categories on Load
     useEffect(() => {
         const fetchCategories = async () => {
@@ -65,6 +69,9 @@ const Add = ({ token }) => {
     // 3. Submit Handler
     const onSubmitHandler = async (e) => {
         e.preventDefault();
+        setLoading(true);
+        setProgress(0);
+
         try {
             const formData = new FormData()
             
@@ -95,7 +102,14 @@ const Add = ({ token }) => {
             image3 && formData.append("image3", image3)
             image4 && formData.append("image4", image4)
 
-            const response = await axios.post(backendUrl + "/api/product/add", formData, { headers: { token } })
+            // AXIOS WITH PROGRESS TRACKING
+            const response = await axios.post(backendUrl + "/api/product/add", formData, { 
+                headers: { token },
+                onUploadProgress: (progressEvent) => {
+                    const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+                    setProgress(percentCompleted);
+                }
+            })
             
             if (response.data.success) {
                 toast.success(response.data.message)
@@ -108,7 +122,12 @@ const Add = ({ token }) => {
             } else {
                 toast.error(response.data.message)
             }
-        } catch (error) { toast.error(error.message) }
+        } catch (error) { 
+            toast.error(error.message) 
+        } finally {
+            setLoading(false);
+            setTimeout(() => setProgress(0), 1000); // Reset progress bar after 1s
+        }
     }
     
     // Toggle Size Selection
@@ -220,7 +239,24 @@ const Add = ({ token }) => {
                 </div>
             </div>
 
-            <button type="submit" className='w-40 py-3 mt-4 bg-black text-white rounded font-bold hover:bg-gray-800 transition'>ADD PRODUCT</button>
+            {/* PROGRESS BAR & BUTTON */}
+            <div className='w-full max-w-[200px] mt-4'>
+                {loading && (
+                    <div className='mb-2'>
+                        <div className="flex justify-between mb-1">
+                            <span className="text-xs font-medium text-blue-700">Uploading...</span>
+                            <span className="text-xs font-medium text-blue-700">{progress}%</span>
+                        </div>
+                        <div className="w-full bg-gray-200 rounded-full h-2.5">
+                            <div className="bg-blue-600 h-2.5 rounded-full" style={{ width: `${progress}%`, transition: 'width 0.2s ease-in-out' }}></div>
+                        </div>
+                    </div>
+                )}
+                
+                <button type="submit" disabled={loading} className={`w-full py-3 rounded font-bold transition flex items-center justify-center gap-2 ${loading ? 'bg-gray-400 cursor-not-allowed' : 'bg-black text-white hover:bg-gray-800'}`}>
+                    {loading ? <><Loader2 className="animate-spin" size={20}/> Processing</> : 'ADD PRODUCT'}
+                </button>
+            </div>
         </form>
     )
 }

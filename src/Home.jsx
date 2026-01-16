@@ -1,20 +1,14 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { ShopContext } from './context/ShopContext';
 import { Link } from 'react-router-dom';
-import axios from 'axios'; // Import Axios for Config Fetching
+import axios from 'axios';
 import { ArrowRight, ShoppingCart, Star, Heart, Eye } from 'lucide-react';
 
-// === IMPORT LOCAL BANNER IMAGES ===
-import banner1 from './assets/banner1.jpg'; 
-import banner2 from './assets/banner2.jpg';
-import banner3 from './assets/banner3.jpg';
-
 const Home = () => {
-  const { products, currency, addToCart, featurePoster, backendUrl } = useContext(ShopContext);
+  const { products, currency, addToCart, featurePoster, backendUrl, config } = useContext(ShopContext);
   const [currentSlide, setCurrentSlide] = useState(0);
 
-  // --- CONFIG STATE (Hot Deal, Testimonial, Banners) ---
-  const [config, setConfig] = useState(null);
+  // --- CONFIG STATE (Hot Product) ---
   const [hotProduct, setHotProduct] = useState(null);
   const [timeLeft, setTimeLeft] = useState({ days:0, hours:0, minutes:0, seconds:0 });
 
@@ -23,42 +17,37 @@ const Home = () => {
   const newProducts = products.filter(item => item.newArrival).slice(0, 8);
   const trendingProducts = products.filter(item => item.trending).slice(0, 5);
 
-  // --- SLIDER CONFIG ---
-  const slides = [
-    { id: 1, image: banner1, subtitle: "EXCLUSIVE OFFER -20% OFF", title: "Specialist in the grocery store", price: "$7.99", buttonText: "Shop Now" },
-    { id: 2, image: banner2, subtitle: "FRESH & ORGANIC", title: "Vegetables & Fruits", price: "$5.99", buttonText: "Order Now" },
-    { id: 3, image: banner3, subtitle: "BAKERY PRODUCTS", title: "Freshly Baked Every Morning", price: "$2.49", buttonText: "Taste It" }
-  ];
+  // --- 1. DYNAMIC SLIDER CONFIG ---
+  // Construct slides array from config object
+  const slides = config?.heroSlider ? [
+      config.heroSlider.slide1,
+      config.heroSlider.slide2,
+      config.heroSlider.slide3
+  ].filter(slide => slide && slide.image) : []; // Filter out empty slides
 
-  // 1. Slider Timer
+  const sliderInterval = config?.heroSlider?.interval || 5000;
+
+  // Slider Timer
   useEffect(() => {
-    const slideInterval = setInterval(() => {
+    if (slides.length === 0) return;
+    const slideTimer = setInterval(() => {
       setCurrentSlide((prev) => (prev === slides.length - 1 ? 0 : prev + 1));
-    }, 5000);
-    return () => clearInterval(slideInterval);
-  }, [slides.length]);
+    }, sliderInterval);
+    return () => clearInterval(slideTimer);
+  }, [slides.length, sliderInterval]);
 
-  // 2. Fetch Home Config & Find Hot Product
-  useEffect(() => {
-    const fetchConfig = async () => {
-        try {
-            const { data } = await axios.get(backendUrl + '/api/config/get');
-            if(data.success) {
-                setConfig(data.config);
-                // If products are loaded, find the hot product object
-                if(products.length > 0 && data.config.hotProduct.productId) {
-                    const found = products.find(p => p._id === data.config.hotProduct.productId);
-                    setHotProduct(found);
-                }
-            }
-        } catch (error) { console.error(error); }
-    };
-    fetchConfig();
-  }, [products, backendUrl]);
 
-  // 3. Countdown Timer Logic
+  // --- 2. HOT PRODUCT LOGIC ---
   useEffect(() => {
-    if(!config || !config.hotProduct.endDate) return;
+    if(config?.hotProduct?.productId && products.length > 0) {
+        const found = products.find(p => p._id === config.hotProduct.productId);
+        setHotProduct(found);
+    }
+  }, [config, products]);
+
+  // Countdown Timer
+  useEffect(() => {
+    if(!config?.hotProduct?.endDate) return;
     
     const calculateTime = () => {
         const now = new Date().getTime();
@@ -78,7 +67,7 @@ const Home = () => {
     };
 
     const timer = setInterval(calculateTime, 1000);
-    calculateTime(); // Run immediately
+    calculateTime();
     return () => clearInterval(timer);
   }, [config]);
 
@@ -113,7 +102,8 @@ const Home = () => {
                     {item.oldPrice > 0 && <span className="text-gray-300 line-through text-xs">${item.oldPrice}</span>}
                     <span className="text-red-500 font-bold text-lg">{currency}{item.price}</span>
                 </div>
-                <button onClick={() => addToCart(item._id, item.sizes[0] || 'M')} className="px-4 py-1.5 rounded-full border border-[#2bbef9] text-[#2bbef9] font-bold text-[10px] uppercase tracking-wide hover:bg-[#2bbef9] hover:text-white transition-colors duration-300">Add</button>
+                {/* Use optional chaining safely for sizes */}
+                <button onClick={() => addToCart(item._id, item.sizes?.[0] || 'Standard')} className="px-4 py-1.5 rounded-full border border-[#2bbef9] text-[#2bbef9] font-bold text-[10px] uppercase tracking-wide hover:bg-[#2bbef9] hover:text-white transition-colors duration-300">Add</button>
             </div>
         </div>
     </div>
@@ -122,26 +112,37 @@ const Home = () => {
   return (
     <div className="min-h-screen bg-white font-sans text-gray-700 pb-20">
       
-      {/* ================= HERO SLIDER ================= */}
-      <div className="container mx-auto px-4 mt-6 mb-12">
-        <div className="relative w-full h-[350px] md:h-[450px] bg-gray-100 rounded-3xl overflow-hidden shadow-sm group z-0">
-            <div className="absolute inset-0 w-full h-full bg-cover bg-center transition-all duration-700 ease-in-out" style={{ backgroundImage: `url(${slides[currentSlide].image})` }}>
-              <div className="absolute inset-0 bg-gradient-to-r from-black/50 to-transparent md:bg-gray-100/10"></div>
-            </div>
-             <div className="absolute inset-0 flex items-center pl-8 md:pl-20">
-                <div className="max-w-xl animate-fade-in-up">
-                    <p className="text-[#2bbef9] md:text-green-600 font-bold tracking-wider text-sm md:text-base uppercase mb-2 bg-white/90 md:bg-transparent inline-block px-2 md:px-0 rounded-sm">{slides[currentSlide].subtitle}</p>
-                    <h2 className="text-4xl md:text-6xl font-bold mb-4 leading-tight text-white md:text-[#233a95] drop-shadow-md md:drop-shadow-none">{slides[currentSlide].title}</h2>
-                    <p className="text-gray-200 md:text-gray-500 mb-6 text-lg">Only this week. Don’t miss...</p>
-                    <div className="flex items-end gap-2 mb-8">
-                          <span className="text-gray-200 md:text-gray-500 font-medium pb-1">from</span>
-                          <span className="text-white md:text-red-500 font-bold text-4xl">{slides[currentSlide].price}</span>
-                    </div>
-                    <button className="bg-[#2bbef9] hover:bg-[#209dd0] text-white px-8 py-4 rounded-full font-bold flex items-center gap-2 transition-transform hover:scale-105 shadow-lg">{slides[currentSlide].buttonText} <ArrowRight size={18} /></button>
+      {/* ================= HERO SLIDER (DYNAMIC) ================= */}
+      {slides.length > 0 && (
+          <div className="container mx-auto px-4 mt-6 mb-12">
+            <div className="relative w-full h-[200px] sm:h-[350px] md:h-[450px] bg-gray-100 rounded-3xl overflow-hidden shadow-sm group z-0">
+                
+                {/* Background Image */}
+                <div 
+                  className="absolute inset-0 w-full h-full bg-cover bg-center transition-all duration-700 ease-in-out" 
+                  style={{ backgroundImage: `url(${slides[currentSlide].image})` }}
+                >
+                  <div className="absolute inset-0 bg-black/5 md:bg-transparent"></div> {/* Slight overlay for text contrast if needed */}
+                </div>
+                
+                {/* Button Only (No Title/Subtitle as requested) */}
+                <div className="absolute bottom-8 left-8 md:bottom-16 md:left-20 animate-fade-in-up">
+                    <Link to={slides[currentSlide].link || '/collection'}>
+                        <button className="bg-[#2bbef9] hover:bg-[#209dd0] text-white px-6 py-2 md:px-8 md:py-3.5 rounded-full font-bold flex items-center gap-2 transition-transform hover:scale-105 shadow-lg text-sm md:text-base tracking-wide">
+                            {slides[currentSlide].buttonText} <ArrowRight size={18} />
+                        </button>
+                    </Link>
+                </div>
+
+                {/* Dots (Optional: to show active slide) */}
+                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
+                    {slides.map((_, idx) => (
+                        <div key={idx} className={`h-2 w-2 rounded-full ${idx === currentSlide ? 'bg-[#2bbef9] w-6' : 'bg-white/50'} transition-all duration-300`}></div>
+                    ))}
                 </div>
             </div>
-        </div>
-      </div>
+          </div>
+      )}
 
       {/* ================= BEST SELLERS (Yellow Poster) ================= */}
       <div className="container mx-auto px-4 mb-16">
@@ -156,7 +157,9 @@ const Home = () => {
         <div className="flex flex-col lg:flex-row gap-8">
             <div className="w-full lg:w-[25%] hidden lg:block">
                 {featurePoster && featurePoster.image ? (
-                    <Link to={featurePoster.redirectUrl || '#'}><div className="rounded-xl overflow-hidden shadow-sm hover:shadow-md transition duration-300 h-full max-h-[700px]"><img src={featurePoster.image} alt="Special Offer" className="w-full h-full object-cover" /></div></Link>
+                    <Link to={featurePoster.redirectUrl || '#'}>
+                        <div className="rounded-xl overflow-hidden shadow-sm hover:shadow-md transition duration-300 h-full max-h-[700px]"><img src={featurePoster.image} alt="Special Offer" className="w-full h-full object-cover" /></div>
+                    </Link>
                 ) : (
                     <div className="rounded-xl bg-yellow-100 h-full min-h-[400px] flex items-center justify-center text-gray-400 border-2 border-dashed border-yellow-200"><p>No Banner Set</p></div>
                 )}
@@ -201,8 +204,8 @@ const Home = () => {
           </div>
       </div>
 
-      {/* ================= HOT PRODUCT OF THE WEEK (New) ================= */}
-      {config && config.hotProduct && config.hotProduct.isActive && hotProduct && (
+      {/* ================= HOT PRODUCT OF THE WEEK ================= */}
+      {config?.hotProduct?.isActive && hotProduct && (
           <div className="container mx-auto px-4 mb-16">
               <div className="border-2 border-red-500 rounded-xl p-8 flex flex-col md:flex-row items-center relative overflow-hidden bg-white">
                   <div className="absolute top-4 left-4 bg-red-600 text-white rounded-full h-14 w-14 flex items-center justify-center font-bold text-lg shadow-lg z-10 animate-pulse">
@@ -241,11 +244,11 @@ const Home = () => {
           </div>
       )}
 
-      {/* ================= CUSTOMER COMMENT & BANNERS (New) ================= */}
+      {/* ================= CUSTOMER COMMENT & BANNERS ================= */}
       <div className="container mx-auto px-4 mb-16">
           <div className="flex flex-col lg:flex-row gap-8">
-              {/* Comment Card */}
-              {config && config.testimonial && (
+              {/* Comment */}
+              {config?.testimonial && (
                   <div className="w-full lg:w-1/3 bg-[#fffcf8] p-8 rounded-xl border border-yellow-100 flex flex-col justify-center">
                       <h3 className="font-bold text-gray-800 uppercase mb-6 text-sm tracking-wide">Customer Comment</h3>
                       <div className="bg-[#fcf8e3] p-6 rounded-xl mb-6 relative">
@@ -264,7 +267,7 @@ const Home = () => {
               )}
               {/* Banners */}
               <div className="w-full lg:w-2/3 flex flex-col md:flex-row gap-6">
-                  {config && config.banner1 && config.banner1.image && (
+                  {config?.banner1?.image && (
                       <div className="flex-1 relative rounded-xl overflow-hidden group h-[250px]">
                           <img src={config.banner1.image} className="w-full h-full object-cover group-hover:scale-105 transition duration-700" />
                           <div className="absolute top-8 left-8">
@@ -274,7 +277,7 @@ const Home = () => {
                           </div>
                       </div>
                   )}
-                  {config && config.banner2 && config.banner2.image && (
+                  {config?.banner2?.image && (
                       <div className="flex-1 relative rounded-xl overflow-hidden group h-[250px]">
                           <img src={config.banner2.image} className="w-full h-full object-cover group-hover:scale-105 transition duration-700" />
                           <div className="absolute top-8 left-8">
