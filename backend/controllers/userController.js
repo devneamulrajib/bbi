@@ -7,72 +7,52 @@ const createToken = (id) => {
     return jwt.sign({ id }, process.env.JWT_SECRET);
 }
 
-// Route for User Login (Email OR Phone)
+// --- USER LOGIN (Email OR Phone) ---
 const loginUser = async (req, res) => {
     try {
-        let { email, password } = req.body; 
-        
-        // 1. Clean inputs (remove spaces)
-        email = email.trim(); 
-        password = password.trim();
+        const { email, password } = req.body;
 
-        console.log(`Login Attempt -> Input: ${email}, Password: ${password}`);
-
-        // 2. Find user by Email OR Phone
-        // Note: We use a case-insensitive regex for email to avoid "User@test.com" vs "user@test.com" issues
         const user = await userModel.findOne({ 
-            $or: [ 
-                { email: { $regex: new RegExp(`^${email}$`, 'i') } }, 
-                { phone: email } 
-            ] 
+            $or: [ { email: email }, { phone: email } ] 
         });
 
         if (!user) {
-            console.log("❌ Login Failed: User not found in database");
             return res.json({ success: false, message: "User doesn't exist" });
         }
 
-        // 3. Check Password
         const isMatch = await bcrypt.compare(password, user.password);
 
         if (isMatch) {
-            console.log("✅ Login Success:", user.name);
             const token = createToken(user._id);
             res.json({ success: true, token });
         } else {
-            console.log("❌ Login Failed: Incorrect Password");
             res.json({ success: false, message: "Invalid credentials" });
         }
 
     } catch (error) {
-        console.log("Server Error during Login:", error);
+        console.log(error);
         res.json({ success: false, message: error.message });
     }
 }
 
-// Route for User Registration (Detailed)
+// --- USER REGISTRATION ---
 const registerUser = async (req, res) => {
     try {
         const { name, email, phone, password, address } = req.body;
 
-        // Check exists
         const exists = await userModel.findOne({ email });
         if (exists) return res.json({ success: false, message: "User already exists" });
 
-        // Validations
         if (!validator.isEmail(email)) return res.json({ success: false, message: "Invalid email" });
-        if (password.length < 8) return res.json({ success: false, message: "Weak password (min 8 chars)" });
+        if (password.length < 8) return res.json({ success: false, message: "Weak password" });
 
-        // Hash
         const salt = await bcrypt.genSalt(10);
         const hashedPassword = await bcrypt.hash(password, salt);
 
         const newUser = new userModel({
-            name, 
-            email, 
-            phone,
+            name, email, phone,
             password: hashedPassword,
-            address: address || {} 
+            address: address || {}
         });
 
         const user = await newUser.save();
@@ -85,10 +65,10 @@ const registerUser = async (req, res) => {
     }
 }
 
-// Get User Profile Data
+// --- GET PROFILE ---
 const getUserProfile = async (req, res) => {
     try {
-        const { userId } = req.body; 
+        const { userId } = req.body;
         const user = await userModel.findById(userId).select('-password');
         res.json({ success: true, userData: user });
     } catch (error) {
@@ -97,7 +77,7 @@ const getUserProfile = async (req, res) => {
     }
 }
 
-// Update User Profile
+// --- UPDATE PROFILE ---
 const updateProfile = async (req, res) => {
     try {
         const { userId, name, phone, address, password } = req.body;
@@ -117,7 +97,30 @@ const updateProfile = async (req, res) => {
     }
 }
 
-// Admin Login
+// --- TOGGLE WISHLIST (NEW) ---
+const toggleWishlist = async (req, res) => {
+    try {
+        const { userId, productId } = req.body;
+        const user = await userModel.findById(userId);
+
+        if (user.wishlist.includes(productId)) {
+            // Remove
+            user.wishlist = user.wishlist.filter(id => id !== productId);
+            await user.save();
+            res.json({ success: true, message: "Removed from Wishlist", wishlist: user.wishlist });
+        } else {
+            // Add
+            user.wishlist.push(productId);
+            await user.save();
+            res.json({ success: true, message: "Added to Wishlist", wishlist: user.wishlist });
+        }
+    } catch (error) {
+        console.log(error);
+        res.json({ success: false, message: error.message });
+    }
+}
+
+// --- ADMIN LOGIN ---
 const adminLogin = async (req, res) => {
     try {
         const { email, password } = req.body;
@@ -133,42 +136,49 @@ const adminLogin = async (req, res) => {
     }
 }
 
-// Admin Management Functions
+// --- ADMIN: LIST ALL USERS ---
 const allUsers = async (req, res) => {
     try {
         const users = await userModel.find({}).select('-password');
         res.json({ success: true, users });
     } catch (error) {
+        console.log(error);
         res.json({ success: false, message: error.message });
     }
 }
 
+// --- ADMIN: DELETE USER ---
 const deleteUser = async (req, res) => {
     try {
         const { id } = req.body;
         await userModel.findByIdAndDelete(id);
         res.json({ success: true, message: "User Deleted" });
     } catch (error) {
+        console.log(error);
         res.json({ success: false, message: error.message });
     }
 }
 
+// --- ADMIN: GET SINGLE USER ---
 const getSingleUser = async (req, res) => {
     try {
         const { id } = req.body;
         const user = await userModel.findById(id).select('-password');
         res.json({ success: true, user });
     } catch (error) {
+        console.log(error);
         res.json({ success: false, message: error.message });
     }
 }
 
+// --- ADMIN: MANAGE USER (ADD/EDIT) ---
 const adminManageUser = async (req, res) => {
     try {
         const { id, name, email, phone, password, street, city, state, zipcode, country } = req.body;
         const address = { street, city, state, zipcode, country };
 
         if (id) {
+            // Update
             const updateData = { name, email, phone, address };
             if (password && password.length > 0) {
                 if (password.length < 8) return res.json({ success: false, message: "Password too short" });
@@ -178,18 +188,26 @@ const adminManageUser = async (req, res) => {
             await userModel.findByIdAndUpdate(id, updateData);
             res.json({ success: true, message: "User Updated Successfully" });
         } else {
+            // Create
             const exists = await userModel.findOne({ email });
             if (exists) return res.json({ success: false, message: "User already exists" });
-            
+            if (!validator.isEmail(email)) return res.json({ success: false, message: "Invalid email" });
+            if (password.length < 8) return res.json({ success: false, message: "Weak password" });
+
             const salt = await bcrypt.genSalt(10);
             const hashedPassword = await bcrypt.hash(password, salt);
             const newUser = new userModel({ name, email, phone, password: hashedPassword, address });
+
             await newUser.save();
             res.json({ success: true, message: "User Created Successfully" });
         }
     } catch (error) {
+        console.log(error);
         res.json({ success: false, message: error.message });
     }
 }
 
-export { loginUser, registerUser, adminLogin, getUserProfile, updateProfile, allUsers, deleteUser, getSingleUser, adminManageUser };
+export { 
+    loginUser, registerUser, getUserProfile, updateProfile, toggleWishlist, 
+    adminLogin, allUsers, deleteUser, getSingleUser, adminManageUser 
+};

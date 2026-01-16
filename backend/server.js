@@ -19,7 +19,7 @@ const PORT = process.env.PORT || 5000;
 // Middleware
 app.use(express.json());
 
-// --- CORS CONFIGURATION ---
+// --- UPDATED CORS CONFIGURATION ---
 const allowedOrigins = [
     'http://localhost:5173',           // Vite Localhost
     'http://localhost:5174',           // Vite Admin Localhost
@@ -27,7 +27,7 @@ const allowedOrigins = [
     'https://babaibangladesh.com',     // Your Custom Domain
     'https://www.babaibangladesh.com', // Your Custom Domain (www)
     'https://babaibangladesh.vercel.app', // Your Vercel Frontend
-    // 👇 CRITICAL: Check your Vercel Admin Dashboard for the exact URL
+    // 👇 CRITICAL: Add your Admin Vercel Link here (Check Vercel for the exact link)
     'https://babai-admin.vercel.app', 
     'https://admin.babaibangladesh.com'
 ];
@@ -54,7 +54,7 @@ const connectDB = async () => {
 connectDB();
 connectCloudinary();
 
-// API Endpoints
+// API Endpoints (Duplicates removed)
 app.use('/api/user', userRouter);
 app.use('/api/product', productRouter);
 app.use('/api/cart', cartRouter);
@@ -71,6 +71,4 @@ app.get('/', (req, res) => {
 // Start Server
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
-    // 👇 This log helps you debug if Render sees your env variables
-    console.log("Admin Setup:", process.env.ADMIN_EMAIL ? "Loaded ✅" : "Missing ❌");
 });

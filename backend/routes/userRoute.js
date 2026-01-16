@@ -1,5 +1,5 @@
 import express from 'express';
-import { loginUser, registerUser, adminLogin, getUserProfile, updateProfile, allUsers, deleteUser, getSingleUser, adminManageUser } from '../controllers/userController.js';
+import { toggleWishlist, loginUser, registerUser, adminLogin, getUserProfile, updateProfile, allUsers, deleteUser, getSingleUser, adminManageUser } from '../controllers/userController.js';
 import authUser from '../middleware/auth.js';
 import adminAuth from '../middleware/adminAuth.js'; // Ensure you have this
 
@@ -19,5 +19,5 @@ userRouter.get('/list', adminAuth, allUsers);
 userRouter.post('/delete', adminAuth, deleteUser);
 userRouter.post('/single', adminAuth, getSingleUser);
 userRouter.post('/manage', adminAuth, adminManageUser); // Handles Add and Edit
-
+userRouter.post('/wishlist', authUser, toggleWishlist);
 export default userRouter;

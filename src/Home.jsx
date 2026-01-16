@@ -148,7 +148,7 @@ const Home = () => {
       <div className="container mx-auto px-4 mb-16">
         <div className="flex flex-col md:flex-row justify-between items-end mb-6 border-b pb-4">
             <div>
-                <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">BACOLA NATURAL FOODS</h3>
+                <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1"></h3>
                 <h2 className="text-2xl md:text-3xl font-bold text-[#233a95] uppercase">Best Sellers</h2>
                 <p className="text-gray-500 text-sm mt-1">Do not miss the current offers until the end of March.</p>
             </div>
