@@ -3,7 +3,8 @@ import { Routes, Route, Outlet, useLocation } from 'react-router-dom';
 
 // Import Components
 import Header from './Header';
-import Footer from './components/Footer'; // <--- Import Footer
+import Footer from './components/Footer'; 
+import CartSidebar from './components/CartSidebar'; // <--- 1. IMPORT ADDED HERE
 
 // Import Pages
 import Home from './Home';
@@ -14,7 +15,7 @@ import Blog from './Blog';
 import BestSellerPage from './BestSellerPage';
 import CollectionPage from './CollectionPage';
 import Product from './pages/Product';
-import LegalPage from './pages/LegalPage'; // <--- Import Legal Page
+import LegalPage from './pages/LegalPage'; 
 import MyProfile from './pages/MyProfile';
 import Cart from './pages/Cart';
 import PlaceOrder from './pages/PlaceOrder';
@@ -30,11 +31,13 @@ const Layout = () => {
 
   return (
     <>
+      <CartSidebar /> {/* <--- 2. COMPONENT ADDED HERE (Global Cart Drawer) */}
+      
       <Header />
       <div className="min-h-screen">
         <Outlet />
       </div>
-      <Footer /> {/* <--- Added Footer here so it shows on all main pages */}
+      <Footer /> 
     </>
   );
 };
@@ -42,10 +45,10 @@ const Layout = () => {
 function App() {
   return (
       <Routes>
-        {/* 1. Login Page (No Header/Footer) */}
+        {/* 1. Login Page (No Header/Footer/Sidebar) */}
         <Route path="/login" element={<Login />} />
 
-        {/* 2. Main Layout (Header + Page Content + Footer) */}
+        {/* 2. Main Layout (Header + Page Content + Footer + Sidebar) */}
         <Route path="/" element={<Layout />}>
           <Route index element={<Home />} />
           <Route path="category/:slug" element={<CategoryPage />} />

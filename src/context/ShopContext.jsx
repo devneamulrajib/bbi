@@ -7,7 +7,7 @@ export const ShopContext = createContext();
 
 const ShopContextProvider = (props) => {
 
-    const currency = "$";
+    const currency = "৳";
     const backendUrl = import.meta.env.VITE_BACKEND_URL;
     const navigate = useNavigate();
 
@@ -19,6 +19,9 @@ const ShopContextProvider = (props) => {
     const [search, setSearch] = useState("");
     const [showSearch, setShowSearch] = useState(false);
     
+    // --- SIDEBAR STATE (NEW) ---
+    const [isCartOpen, setIsCartOpen] = useState(false);
+
     // Config & User
     const [featurePoster, setFeaturePoster] = useState(null);
     const [config, setConfig] = useState(null);
@@ -54,6 +57,9 @@ const ShopContextProvider = (props) => {
         
         setCartItems(cartData);
         toast.success("Added to Cart");
+        
+        // --- OPEN SIDEBAR AUTOMATICALLY (NEW) ---
+        // setIsCartOpen(true); 
 
         if (token) {
             try {
@@ -225,7 +231,8 @@ const ShopContextProvider = (props) => {
         featurePoster, config,
         userData, setUserData, getUserData,
         wishlist, addToWishlist,
-        verifyPromo, discountAmount, couponCode
+        verifyPromo, discountAmount, couponCode,
+        isCartOpen, setIsCartOpen // <--- EXPORTED HERE
     }
 
     return (

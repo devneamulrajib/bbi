@@ -1,5 +1,5 @@
 import express from 'express';
-import { toggleWishlist, loginUser, registerUser, adminLogin, getUserProfile, updateProfile, allUsers, deleteUser, getSingleUser, adminManageUser } from '../controllers/userController.js';
+import { sendOtp, toggleWishlist, loginUser, registerUser, adminLogin, getUserProfile, updateProfile, allUsers, deleteUser, getSingleUser, adminManageUser } from '../controllers/userController.js';
 import authUser from '../middleware/auth.js';
 import adminAuth from '../middleware/adminAuth.js'; // Ensure you have this
 
@@ -13,6 +13,7 @@ userRouter.post('/admin', adminLogin);
 // User Routes
 userRouter.get('/profile', authUser, getUserProfile);
 userRouter.post('/update-profile', authUser, updateProfile);
+userRouter.post('/send-otp', sendOtp);
 
 // --- NEW ADMIN ROUTES ---
 userRouter.get('/list', adminAuth, allUsers);
