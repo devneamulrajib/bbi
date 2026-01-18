@@ -12,12 +12,11 @@ import {
 
 const Orders = ({ token }) => {
 
-  // --- STATE MANAGEMENT ---
   const [orders, setOrders] = useState([]) 
   const [filteredOrders, setFilteredOrders] = useState([]) 
   const [loading, setLoading] = useState(true)
 
-  // Filter States
+  // Filters
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('All')
   const [limitFilter, setLimitFilter] = useState('All') 
@@ -25,7 +24,7 @@ const Orders = ({ token }) => {
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
 
-  // Modal State
+  // Modal
   const [selectedOrder, setSelectedOrder] = useState(null)
   const [showModal, setShowModal] = useState(false)
 
@@ -36,7 +35,7 @@ const Orders = ({ token }) => {
       const response = await axios.post(backendUrl + '/api/order/list', {}, { headers: { token } })
       if (response.data.success) {
         setOrders(response.data.orders)
-        // We set filtered orders here initially, but the useEffect below will handle the logic immediately after
+        // Note: Filter useEffect will populate filteredOrders
       } else {
         toast.error(response.data.message)
       }
@@ -47,16 +46,16 @@ const Orders = ({ token }) => {
     }
   }
 
-  // --- ACTIONS (Status, Payment, Delete) ---
+  // --- STATUS UPDATE ---
   const statusHandler = async (orderId, status = null, payment = null) => {
     try {
       let payload = { orderId };
       if(status) payload.status = status;
-      if(payment !== null) payload.payment = payment; // Handle boolean false correctly
+      if(payment !== null) payload.payment = payment;
 
       const response = await axios.post(backendUrl + '/api/order/status', payload, { headers: { token } })
       if (response.data.success) {
-        await fetchAllOrders() // Refresh data
+        await fetchAllOrders() 
         toast.success("Updated Successfully")
       }
     } catch (error) {
@@ -64,6 +63,7 @@ const Orders = ({ token }) => {
     }
   }
 
+  // --- DELETE ORDER ---
   const deleteOrderHandler = async (orderId) => {
     if(!window.confirm("Are you sure? This cannot be undone.")) return;
     try {
@@ -83,7 +83,6 @@ const Orders = ({ token }) => {
   useEffect(() => {
     let result = [...orders];
 
-    // 1. Search
     if (searchTerm) {
       const lowerTerm = searchTerm.toLowerCase();
       result = result.filter(order => 
@@ -92,17 +91,14 @@ const Orders = ({ token }) => {
       );
     }
 
-    // 2. Status
     if (statusFilter !== 'All') {
       result = result.filter(order => order.status === statusFilter);
     }
 
-    // 3. Method
     if (methodFilter !== 'All') {
       result = result.filter(order => order.paymentMethod === methodFilter);
     }
 
-    // 4. Date Range
     if (startDate && endDate) {
       const start = new Date(startDate).setHours(0,0,0,0);
       const end = new Date(endDate).setHours(23,59,59,999);
@@ -112,7 +108,6 @@ const Orders = ({ token }) => {
       });
     }
 
-    // 5. Time Limit (if no specific date range)
     if (limitFilter !== 'All' && (!startDate || !endDate)) {
       const days = parseInt(limitFilter);
       const limitDate = new Date();
@@ -132,80 +127,111 @@ const Orders = ({ token }) => {
     setEndDate('');
   }
 
-  // --- PDF GENERATOR (BabaiBangladesh) ---
+  // --- PDF GENERATOR (FIXED & ROBUST) ---
   const generateInvoice = (order) => {
-    const doc = new jsPDF();
-    const currency = '$'; 
-
-    // Header
     try {
-        doc.addImage(assets.logo, 'PNG', 10, 10, 20, 20); 
-    } catch (e) { console.warn("Logo error", e); }
+        console.log("Generating PDF for:", order._id);
+        const doc = new jsPDF();
+        const currency = '$'; 
+        
+        // 1. LOGO HANDLING (SAFE MODE)
+        // If image fails, it won't crash the PDF
+        try {
+            if (assets.logo) {
+                doc.addImage(assets.logo, 'PNG', 10, 10, 20, 20); 
+            }
+        } catch (imgError) {
+            console.warn("Logo failed to load (ignoring):", imgError);
+        }
 
-    doc.setFontSize(20);
-    doc.setTextColor(0, 100, 0); // Green
-    doc.text("BabaiBangladesh", 35, 20);
+        // 2. BRANDING TEXT
+        doc.setFontSize(20);
+        doc.setTextColor(0, 100, 0); // Green
+        doc.text("BabaiBangladesh", 35, 20);
+        
+        doc.setFontSize(10);
+        doc.setTextColor(100);
+        doc.text("www.babaibangladesh.com", 35, 26);
+        doc.text("Dhaka, Bangladesh", 35, 31);
+
+        // 3. INVOICE INFO
+        doc.setFontSize(14);
+        doc.setTextColor(0);
+        doc.text("INVOICE", 160, 20);
+        doc.setFontSize(10);
+        doc.text(`#${order._id.slice(-6).toUpperCase()}`, 160, 26);
+        
+        const orderDate = order.date ? new Date(order.date).toLocaleDateString() : 'N/A';
+        doc.text(`Date: ${orderDate}`, 160, 32);
+
+        // 4. BILL TO
+        doc.text("Bill To:", 10, 50);
+        doc.setTextColor(60);
+        const fullName = `${order.address.firstName || ''} ${order.address.lastName || ''}`;
+        doc.text(fullName, 10, 56);
+        doc.text(order.address.email || '', 10, 61);
+        doc.text(`${order.address.street || ''}, ${order.address.city || ''}`, 10, 66);
+        doc.text(order.address.phone || '', 10, 71);
+
+        // 5. ITEMS TABLE
+        const tableColumn = ["Item", "Size", "Qty", "Price", "Total"];
+        const tableRows = [];
+        
+        if (order.items && Array.isArray(order.items)) {
+            order.items.forEach(item => {
+                tableRows.push([
+                    item.name,
+                    item.size || 'N/A',
+                    item.quantity,
+                    `${currency}${item.price}`,
+                    `${currency}${item.price * item.quantity}`,
+                ]);
+            });
+        }
+
+        doc.autoTable({
+            head: [tableColumn],
+            body: tableRows,
+            startY: 80,
+            theme: 'grid',
+            headStyles: { fillColor: [0, 100, 0] }
+        });
+
+        // 6. TOTAL AMOUNT
+        // Ensure lastAutoTable exists, otherwise default to 100
+        const finalY = (doc.lastAutoTable && doc.lastAutoTable.finalY) ? doc.lastAutoTable.finalY + 10 : 100;
+        doc.setTextColor(0);
+        doc.setFontSize(12);
+        doc.text(`Total Amount: ${currency}${order.amount}`, 140, finalY);
+
+        // 7. SAVE
+        console.log("Saving PDF...");
+        doc.save(`invoice_${order._id.slice(-6)}.pdf`);
     
-    doc.setFontSize(10);
-    doc.setTextColor(100);
-    doc.text("www.babaibangladesh.com", 35, 26);
-    doc.text("Dhaka, Bangladesh", 35, 31);
-
-    // Info
-    doc.setFontSize(14);
-    doc.setTextColor(0);
-    doc.text("INVOICE", 160, 20);
-    doc.setFontSize(10);
-    doc.text(`#${order._id.slice(-6).toUpperCase()}`, 160, 26);
-    doc.text(`Date: ${new Date(order.date).toLocaleDateString()}`, 160, 32);
-
-    // Bill To
-    doc.text("Bill To:", 10, 50);
-    doc.setTextColor(60);
-    doc.text(`${order.address.firstName} ${order.address.lastName}`, 10, 56);
-    doc.text(order.address.email, 10, 61);
-    doc.text(`${order.address.street}, ${order.address.city}`, 10, 66);
-    doc.text(order.address.phone, 10, 71);
-
-    // Table
-    const tableColumn = ["Item", "Size", "Qty", "Price", "Total"];
-    const tableRows = [];
-    order.items.forEach(item => {
-      tableRows.push([
-        item.name,
-        item.size,
-        item.quantity,
-        `${currency}${item.price}`,
-        `${currency}${item.price * item.quantity}`,
-      ]);
-    });
-
-    doc.autoTable({
-      head: [tableColumn],
-      body: tableRows,
-      startY: 80,
-      theme: 'grid',
-      headStyles: { fillColor: [0, 100, 0] }
-    });
-
-    // Totals
-    const finalY = doc.lastAutoTable.finalY + 10;
-    doc.setTextColor(0);
-    doc.text(`Total Amount: ${currency}${order.amount}`, 140, finalY);
-
-    doc.save(`invoice_${order._id.slice(-6)}.pdf`);
+    } catch (err) {
+        console.error("PDF Generation Error:", err);
+        toast.error("Failed to generate PDF. Check console.");
+    }
   }
 
-  // --- EXPORT CSV ---
+  // --- CSV EXPORT ---
   const downloadReport = () => {
-    let csvContent = "data:text/csv;charset=utf-8,ID,Date,Name,Amount,Status,Method\n";
-    filteredOrders.forEach(o => {
-      csvContent += `${o._id},${new Date(o.date).toLocaleDateString()},${o.address.firstName} ${o.address.lastName},${o.amount},${o.status},${o.paymentMethod}\n`;
-    });
-    const link = document.createElement("a");
-    link.href = encodeURI(csvContent);
-    link.download = "orders.csv";
-    link.click();
+    try {
+        let csvContent = "data:text/csv;charset=utf-8,ID,Date,Name,Amount,Status,Method\n";
+        filteredOrders.forEach(o => {
+            const date = o.date ? new Date(o.date).toLocaleDateString() : 'N/A';
+            const name = o.address ? `${o.address.firstName} ${o.address.lastName}` : 'Guest';
+            csvContent += `${o._id},${date},${name},${o.amount},${o.status},${o.paymentMethod}\n`;
+        });
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", "orders.csv");
+        document.body.appendChild(link);
+        link.click();
+    } catch (err) {
+        toast.error("Failed to export CSV");
+    }
   }
 
   useEffect(() => { fetchAllOrders() }, [token])
@@ -214,7 +240,7 @@ const Orders = ({ token }) => {
     <div className='w-full min-h-screen bg-gray-50 pb-10'>
       <h3 className='text-2xl font-bold mb-6 text-gray-800'>Order Management</h3>
 
-      {/* --- FILTER BAR --- */}
+      {/* FILTER BAR */}
       <div className='bg-white p-5 rounded-lg shadow mb-6'>
         <div className='flex flex-wrap gap-4 items-center justify-between mb-4'>
             {/* Search */}
@@ -229,7 +255,7 @@ const Orders = ({ token }) => {
                 />
             </div>
 
-            {/* Dropdowns */}
+            {/* Controls */}
             <div className='flex flex-wrap gap-2 text-sm'>
                 <select className='border px-3 py-2 rounded outline-none' value={statusFilter} onChange={(e)=>setStatusFilter(e.target.value)}>
                     <option value="All">Status: All</option>
@@ -259,7 +285,7 @@ const Orders = ({ token }) => {
             </div>
         </div>
 
-        {/* Dates & Reset */}
+        {/* Date Filters */}
         <div className='flex flex-wrap gap-4 items-center border-t pt-4 text-sm'>
             <div className='flex items-center gap-2'>
                 <span className='text-gray-500'>From:</span>
@@ -275,7 +301,7 @@ const Orders = ({ token }) => {
         </div>
       </div>
 
-      {/* --- TABLE --- */}
+      {/* ORDERS TABLE */}
       <div className='bg-white rounded-lg shadow overflow-hidden'>
         <div className='overflow-x-auto'>
             <table className='w-full text-left border-collapse'>
@@ -296,8 +322,7 @@ const Orders = ({ token }) => {
                         <tr key={index} className='hover:bg-gray-50 border-b'>
                             <td className='p-4 font-mono font-bold'>#{order._id.slice(-6).toUpperCase()}</td>
                             <td className='p-4'>
-                                {new Date(order.date).toLocaleDateString()}
-                                <div className='text-xs text-gray-400'>{new Date(order.date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</div>
+                                {order.date ? new Date(order.date).toLocaleDateString() : 'N/A'}
                             </td>
                             <td className='p-4 font-medium'>
                                 {order.address.firstName} {order.address.lastName}
@@ -359,7 +384,7 @@ const Orders = ({ token }) => {
         </div>
       </div>
 
-      {/* --- INVOICE MODAL --- */}
+      {/* MODAL */}
       {showModal && selectedOrder && (
           <div className='fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4 animate-in fade-in duration-200'>
               <div className='bg-white w-full max-w-2xl rounded-lg shadow-2xl overflow-hidden max-h-[90vh] flex flex-col'>
@@ -372,7 +397,7 @@ const Orders = ({ token }) => {
                       <div className='flex justify-between items-start mb-6'>
                           <div>
                               <div className='flex items-center gap-2'>
-                                  <img src={assets.logo} className='h-8 w-auto' alt="logo" />
+                                  <img src={assets.logo} className='h-8 w-auto' alt="logo" onError={(e) => e.target.style.display = 'none'} />
                                   <span className='text-xl font-bold text-green-700'>BabaiBangladesh</span>
                               </div>
                               <p className='text-xs text-gray-500 mt-1'>www.babaibangladesh.com</p>
@@ -380,11 +405,11 @@ const Orders = ({ token }) => {
                           <div className='text-right'>
                               <h1 className='text-2xl font-bold text-gray-800'>INVOICE</h1>
                               <p className='text-sm text-gray-500'>#{selectedOrder._id.slice(-6).toUpperCase()}</p>
-                              <p className='text-sm text-gray-500'>{new Date(selectedOrder.date).toLocaleDateString()}</p>
+                              <p className='text-sm text-gray-500'>{selectedOrder.date ? new Date(selectedOrder.date).toLocaleDateString() : ''}</p>
                           </div>
                       </div>
 
-                      {/* Addresses */}
+                      {/* Content */}
                       <div className='grid grid-cols-2 gap-8 mb-6 text-sm'>
                           <div>
                               <h3 className='font-bold text-gray-700 border-b pb-1 mb-2'>Bill To</h3>
@@ -400,7 +425,6 @@ const Orders = ({ token }) => {
                           </div>
                       </div>
 
-                      {/* Items */}
                       <table className='w-full mb-6 border text-sm'>
                           <thead className='bg-gray-50 text-gray-700'>
                               <tr>
