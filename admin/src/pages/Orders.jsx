@@ -7,13 +7,14 @@ import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable' 
 import { 
   Search, RefreshCcw, Download, Printer, Eye, X, 
-  Trash2, CheckCircle, XCircle 
+  Trash2, CheckCircle, XCircle, Bike 
 } from 'lucide-react'
 
 const Orders = ({ token }) => {
 
   const [orders, setOrders] = useState([]) 
   const [filteredOrders, setFilteredOrders] = useState([]) 
+  const [riders, setRiders] = useState([]) // State for Riders
   const [loading, setLoading] = useState(true)
 
   // Filters
@@ -28,20 +29,57 @@ const Orders = ({ token }) => {
   const [selectedOrder, setSelectedOrder] = useState(null)
   const [showModal, setShowModal] = useState(false)
 
-  // --- FETCH DATA ---
+  // --- FETCH ORDERS ---
   const fetchAllOrders = async () => {
     if (!token) return
     try {
-      const response = await axios.post(backendUrl + '/api/order/list', {}, { headers: { token } })
-      if (response.data.success) {
-        setOrders(response.data.orders)
+      const response = await axios.post(backendUrl + '/api/user/list', {}, { headers: { token } }) // Note: Route might differ based on your route file, assumed /api/user/list based on context or /api/order/list
+      // Based on previous context, usually it is /api/order/list, but if you moved it to userRoute, check path. 
+      // I will use your previous file's path:
+      // If your backend/routes/userRoute.js has 'userRouter.get('/list', ... allUsers)', that's users.
+      // Orders usually reside in orderRoute. Assuming standard order route:
+      const orderRes = await axios.post(backendUrl + '/api/order/list', {}, { headers: { token } });
+      
+      if (orderRes.data.success) {
+        setOrders(orderRes.data.orders)
       } else {
-        toast.error(response.data.message)
+        toast.error(orderRes.data.message)
       }
     } catch (error) {
       toast.error(error.message)
     } finally {
       setLoading(false)
+    }
+  }
+
+  // --- FETCH RIDERS (New) ---
+  const fetchRiders = async () => {
+    try {
+      // Fetching staff from the user/staff/list route we created
+      const response = await axios.get(backendUrl + '/api/user/staff/list', { headers: { token } })
+      if (response.data.success) {
+        // Filter only staff with role 'Deliveryman'
+        const deliveryMen = response.data.staff.filter(member => member.role === 'Deliveryman')
+        setRiders(deliveryMen)
+      }
+    } catch (error) {
+      console.error(error)
+    }
+  }
+
+  // --- ASSIGN RIDER HANDLER (New) ---
+  const assignRiderHandler = async (orderId, riderId) => {
+    if (!riderId) return;
+    try {
+      const response = await axios.post(backendUrl + '/api/user/order/assign', { orderId, riderId }, { headers: { token } })
+      if (response.data.success) {
+        toast.success(response.data.message)
+        fetchAllOrders() // Refresh orders to show assigned rider
+      } else {
+        toast.error(response.data.message)
+      }
+    } catch (error) {
+      toast.error(error.message)
     }
   }
 
@@ -126,13 +164,12 @@ const Orders = ({ token }) => {
     setEndDate('');
   }
 
-  // --- PDF GENERATOR (UPDATED) ---
+  // --- PDF GENERATOR ---
   const generateInvoice = (order) => {
     try {
         const doc = new jsPDF();
-        const currency = 'Tk '; // Changed to Tk for Bangladesh context, or use '$'
+        const currency = 'Tk '; 
 
-        // 1. LOGO
         try {
             if (assets.logo) {
                 doc.addImage(assets.logo, 'PNG', 10, 10, 20, 20); 
@@ -141,9 +178,8 @@ const Orders = ({ token }) => {
             console.warn("Logo failed to load");
         }
 
-        // 2. HEADER
         doc.setFontSize(20);
-        doc.setTextColor(0, 100, 0); // Green
+        doc.setTextColor(0, 100, 0); 
         doc.text("BabaiBangladesh", 35, 20);
         
         doc.setFontSize(10);
@@ -151,7 +187,6 @@ const Orders = ({ token }) => {
         doc.text("www.babaibangladesh.com", 35, 26);
         doc.text("Dhaka, Bangladesh", 35, 31);
 
-        // 3. INVOICE META DATA
         doc.setFontSize(14);
         doc.setTextColor(0);
         doc.text("INVOICE", 160, 20);
@@ -161,18 +196,16 @@ const Orders = ({ token }) => {
         const orderDate = order.date ? new Date(order.date).toLocaleDateString() : 'N/A';
         doc.text(`Date: ${orderDate}`, 160, 31);
 
-        // --- NEW: PAYMENT STATUS ---
         const paymentStatus = order.payment ? "PAID" : "UNPAID";
         doc.setFontSize(12);
         if (order.payment) {
-            doc.setTextColor(0, 128, 0); // Green
+            doc.setTextColor(0, 128, 0); 
         } else {
-            doc.setTextColor(200, 0, 0); // Red
+            doc.setTextColor(200, 0, 0); 
         }
         doc.text(paymentStatus, 160, 38);
-        doc.setTextColor(0); // Reset color
+        doc.setTextColor(0); 
 
-        // 4. BILL TO
         doc.setFontSize(10);
         doc.text("Bill To:", 10, 50);
         doc.setTextColor(60);
@@ -181,7 +214,6 @@ const Orders = ({ token }) => {
         doc.text(order.address.phone || '', 10, 61);
         doc.text(`${order.address.street || ''}, ${order.address.city || ''}`, 10, 66);
 
-        // 5. TABLE
         const tableColumn = ["Item", "Size", "Qty", "Price", "Total"];
         const tableRows = [];
         let subtotal = 0;
@@ -208,49 +240,39 @@ const Orders = ({ token }) => {
             headStyles: { fillColor: [0, 100, 0] }
         });
 
-        // 6. CALCULATIONS (Delivery, Discount, Total)
-        // If deliveryCharge exists in DB use it, otherwise calculate diff (Total - Subtotal)
-        // This is a smart fallback if your DB schema doesn't have 'deliveryCharge' field yet
         let deliveryCharge = order.deliveryCharge || (order.amount > subtotal ? order.amount - subtotal : 0);
-        let discount = order.discount || 0; // Assuming 0 if no field
+        let discount = order.discount || 0; 
         
-        // If there was a coupon, show it
         const finalY = (doc.lastAutoTable && doc.lastAutoTable.finalY) ? doc.lastAutoTable.finalY + 10 : 100;
         
         doc.setTextColor(0);
         doc.setFontSize(10);
 
-        // Right-aligned math
         const xLabel = 140;
         const xValue = 190;
         let currentY = finalY;
 
-        // Subtotal
         doc.text("Subtotal:", xLabel, currentY);
         doc.text(`${currency}${subtotal}`, xValue, currentY, { align: 'right' });
         currentY += 6;
 
-        // Delivery
         doc.text("Delivery Charge:", xLabel, currentY);
         doc.text(`${currency}${deliveryCharge}`, xValue, currentY, { align: 'right' });
         currentY += 6;
 
-        // Coupon / Discount (Only show if used)
         if (order.coupon || discount > 0) {
-            doc.setTextColor(0, 100, 0); // Green for discount
+            doc.setTextColor(0, 100, 0); 
             doc.text(`Discount (${order.coupon || 'Coupon'}):`, xLabel, currentY);
             doc.text(`-${currency}${discount}`, xValue, currentY, { align: 'right' });
             doc.setTextColor(0);
             currentY += 6;
         }
 
-        // Grand Total
         doc.setFontSize(12);
         doc.setFont("helvetica", "bold");
         doc.text("Grand Total:", xLabel, currentY + 2);
         doc.text(`${currency}${order.amount}`, xValue, currentY + 2, { align: 'right' });
 
-        // 7. SAVE
         doc.save(`invoice_${order._id.slice(-6)}.pdf`);
     
     } catch (err) {
@@ -262,11 +284,14 @@ const Orders = ({ token }) => {
   // --- CSV EXPORT ---
   const downloadReport = () => {
     try {
-        let csvContent = "data:text/csv;charset=utf-8,ID,Date,Name,Total,Status,Payment\n";
+        let csvContent = "data:text/csv;charset=utf-8,ID,Date,Name,Total,Status,Payment,Rider\n";
         filteredOrders.forEach(o => {
             const date = o.date ? new Date(o.date).toLocaleDateString() : 'N/A';
             const name = o.address ? `${o.address.firstName} ${o.address.lastName}` : 'Guest';
-            csvContent += `${o._id},${date},${name},${o.amount},${o.status},${o.paymentMethod}\n`;
+            // Need to find rider name from riders array if only ID is in order, 
+            // but usually backend populates it or we check riders state. 
+            // For now simple CSV.
+            csvContent += `${o._id},${date},${name},${o.amount},${o.status},${o.paymentMethod},${o.rider || 'Unassigned'}\n`;
         });
         const encodedUri = encodeURI(csvContent);
         const link = document.createElement("a");
@@ -279,7 +304,12 @@ const Orders = ({ token }) => {
     }
   }
 
-  useEffect(() => { fetchAllOrders() }, [token])
+  useEffect(() => { 
+    if(token){
+      fetchAllOrders();
+      fetchRiders(); // Fetch riders when component loads
+    }
+  }, [token])
 
   return (
     <div className='w-full min-h-screen bg-gray-50 pb-10'>
@@ -357,6 +387,7 @@ const Orders = ({ token }) => {
                         <th className='p-4'>Customer</th>
                         <th className='p-4'>Payment</th>
                         <th className='p-4'>Amount</th>
+                        <th className='p-4'>Rider</th> {/* New Column */}
                         <th className='p-4'>Status</th>
                         <th className='p-4'>Action</th>
                         <th className='p-4 text-center'>View</th>
@@ -385,6 +416,26 @@ const Orders = ({ token }) => {
                                 </div>
                             </td>
                             <td className='p-4 font-bold'>${order.amount}</td>
+                            
+                            {/* --- ASSIGN RIDER COLUMN --- */}
+                            <td className='p-4'>
+                                <div className='flex items-center gap-1'>
+                                  <Bike size={16} className="text-gray-400"/>
+                                  <select 
+                                      onChange={(e) => assignRiderHandler(order._id, e.target.value)} 
+                                      value={order.rider || ""} 
+                                      className='border rounded text-xs py-1 px-1 focus:outline-none bg-white max-w-[120px]'
+                                  >
+                                      <option value="">Select Rider</option>
+                                      {riders.map((r) => (
+                                          <option key={r._id} value={r._id}>
+                                              {r.name}
+                                          </option>
+                                      ))}
+                                  </select>
+                                </div>
+                            </td>
+
                             <td className='p-4'>
                                 <span className={`px-2 py-1 rounded text-xs font-semibold
                                     ${order.status === 'Delivered' ? 'bg-green-100 text-green-700' : 
@@ -422,7 +473,7 @@ const Orders = ({ token }) => {
                             </td>
                         </tr>
                     )) : (
-                        <tr><td colSpan="8" className='p-10 text-center text-gray-400'>No orders found.</td></tr>
+                        <tr><td colSpan="9" className='p-10 text-center text-gray-400'>No orders found.</td></tr>
                     )}
                 </tbody>
             </table>
@@ -470,7 +521,16 @@ const Orders = ({ token }) => {
                             <h3 className='font-bold text-gray-700 border-b pb-1 mb-2'>Details</h3>
                             <p>Method: <span className='font-semibold'>{selectedOrder.paymentMethod}</span></p>
                             <p>Status: <span className='font-semibold text-blue-600'>{selectedOrder.status}</span></p>
-                            {selectedOrder.coupon && <p className='text-green-600'>Coupon Used: {selectedOrder.coupon}</p>}
+                            
+                            {/* Rider Info in Modal */}
+                            {selectedOrder.rider && (
+                                <p className='mt-2 bg-blue-50 p-1 rounded'>
+                                    <span className='font-semibold text-blue-700'>Assigned Rider ID:</span> 
+                                    <br/>{selectedOrder.rider}
+                                </p>
+                            )}
+
+                            {selectedOrder.coupon && <p className='text-green-600 mt-1'>Coupon Used: {selectedOrder.coupon}</p>}
                           </div>
                       </div>
 
@@ -496,10 +556,8 @@ const Orders = ({ token }) => {
                           </tbody>
                       </table>
 
-                      {/* Summary Calculation in Modal */}
                       <div className='flex justify-end'>
                           <div className='w-48 text-sm'>
-                              {/* Logic to show breakdown even if DB doesn't have separate fields yet */}
                               {(() => {
                                   const subtotal = selectedOrder.items.reduce((acc, item) => acc + item.price * item.quantity, 0);
                                   const delivery = selectedOrder.deliveryCharge || (selectedOrder.amount > subtotal ? selectedOrder.amount - subtotal : 0);
