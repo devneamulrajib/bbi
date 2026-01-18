@@ -29,11 +29,16 @@ const sendOtp = async (req, res) => {
             { upsert: true, new: true }
         );
 
-        // Send Email (non-blocking)
+        // Send Email
         const isSent = await sendOtpEmail(email, otp);
-        if (!isSent) console.warn("⚠️ OTP email failed, but user can continue signup");
 
-        return res.json({ success: true, message: "OTP sent to your email (or logged if failed)" });
+        // FIX: If email fails, delete the OTP and return Error
+        if (!isSent) {
+            await otpModel.deleteOne({ email }); // Cleanup failed attempt
+            return res.json({ success: false, message: "Failed to send OTP email. Please check the email address." });
+        }
+
+        return res.json({ success: true, message: "OTP sent to your email" });
 
     } catch (error) {
         console.error("Send OTP Error:", error);

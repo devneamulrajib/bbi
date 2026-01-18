@@ -1,7 +1,10 @@
 import Brevo from "@getbrevo/brevo";
+import dotenv from 'dotenv';
+dotenv.config(); // Ensure env vars are loaded
 
 const apiInstance = new Brevo.TransactionalEmailsApi();
 
+// key identifier is optional in setApiKey, usually just the key string is enough
 apiInstance.setApiKey(
   Brevo.TransactionalEmailsApiApiKeys.apiKey,
   process.env.BREVO_API_KEY
@@ -12,7 +15,8 @@ export const sendOtpEmail = async (email, otp) => {
     await apiInstance.sendTransacEmail({
       subject: "Verify Your Account - OTP",
       sender: {
-        email: "no-reply@babaibangladesh.com",
+        // CHANGE THIS: You must use the email you verified in Brevo
+        email: process.env.EMAIL_USER, 
         name: "Babai Bangladesh"
       },
       to: [
@@ -33,7 +37,8 @@ export const sendOtpEmail = async (email, otp) => {
     return true;
 
   } catch (error) {
-    console.error("Brevo Email Error:", error);
+    // Log the actual error body to see why Brevo rejected it
+    console.error("Brevo Email Error:", error.body ? error.body : error);
     return false;
   }
 };
