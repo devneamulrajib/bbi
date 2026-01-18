@@ -1,15 +1,16 @@
 import userModel from "../models/userModel.js";
-import otpModel from "../models/otpModel.js"; // <--- Import OTP Model
-import { sendOtpEmail } from "../config/emailConfig.js"; // <--- Import Email Helper
+import otpModel from "../models/otpModel.js"; // OTP Model
+import { sendOtpEmail } from "../config/emailConfig.js"; // Brevo Email Helper
 import validator from "validator";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 
+// Create JWT Token
 const createToken = (id) => {
     return jwt.sign({ id }, process.env.JWT_SECRET);
-}
+};
 
-// --- 1. SEND OTP (NEW) ---
+// --- 1. SEND OTP ---
 const sendOtp = async (req, res) => {
     try {
         const { email } = req.body;
@@ -21,27 +22,24 @@ const sendOtp = async (req, res) => {
         // Generate 6-digit OTP
         const otp = Math.floor(100000 + Math.random() * 900000).toString();
 
-        // Save to DB (Update if exists, auto-expires in 5 mins)
+        // Save to DB (upsert, auto-expires 5 mins)
         await otpModel.findOneAndUpdate(
-            { email }, 
-            { otp, createdAt: Date.now() }, 
+            { email },
+            { otp, createdAt: Date.now() },
             { upsert: true, new: true }
         );
 
-        // Send Email
+        // Send Email (non-blocking)
         const isSent = await sendOtpEmail(email, otp);
+        if (!isSent) console.warn("⚠️ OTP email failed, but user can continue signup");
 
-        if (isSent) {
-            res.json({ success: true, message: "OTP sent to your email" });
-        } else {
-            res.json({ success: false, message: "Failed to send email" });
-        }
+        return res.json({ success: true, message: "OTP sent to your email (or logged if failed)" });
 
     } catch (error) {
-        console.log(error);
-        res.json({ success: false, message: error.message });
+        console.error("Send OTP Error:", error);
+        return res.status(500).json({ success: false, message: "Server error while sending OTP" });
     }
-}
+};
 
 // --- 2. USER REGISTRATION (VERIFY OTP) ---
 const registerUser = async (req, res) => {
@@ -51,13 +49,12 @@ const registerUser = async (req, res) => {
         // 1. Verify OTP
         const otpRecord = await otpModel.findOne({ email });
         if (!otpRecord || otpRecord.otp !== otp) {
-            return res.json({ success: false, message: "Invalid or Expired OTP" });
+            return res.json({ success: false, message: "Invalid or expired OTP" });
         }
 
         // 2. Standard Validation
         const exists = await userModel.findOne({ email });
         if (exists) return res.json({ success: false, message: "User already exists" });
-
         if (!validator.isEmail(email)) return res.json({ success: false, message: "Invalid email" });
         if (password.length < 8) return res.json({ success: false, message: "Weak password" });
 
@@ -66,7 +63,9 @@ const registerUser = async (req, res) => {
         const hashedPassword = await bcrypt.hash(password, salt);
 
         const newUser = new userModel({
-            name, email, phone,
+            name,
+            email,
+            phone,
             password: hashedPassword,
             address: address || {}
         });
@@ -77,156 +76,144 @@ const registerUser = async (req, res) => {
         await otpModel.deleteOne({ email });
 
         const token = createToken(user._id);
-        res.json({ success: true, token });
+
+        return res.json({ success: true, token, message: "Signup successful" });
 
     } catch (error) {
-        console.log(error);
-        res.json({ success: false, message: error.message });
+        console.error("Register User Error:", error);
+        return res.status(500).json({ success: false, message: "Server error during signup" });
     }
-}
+};
 
-// --- USER LOGIN (Email OR Phone) ---
+// --- 3. USER LOGIN ---
 const loginUser = async (req, res) => {
     try {
         const { email, password } = req.body;
-
-        const user = await userModel.findOne({ 
-            $or: [ { email: email }, { phone: email } ] 
-        });
-
-        if (!user) {
-            return res.json({ success: false, message: "User doesn't exist" });
-        }
+        const user = await userModel.findOne({ $or: [{ email }, { phone: email }] });
+        if (!user) return res.json({ success: false, message: "User doesn't exist" });
 
         const isMatch = await bcrypt.compare(password, user.password);
+        if (!isMatch) return res.json({ success: false, message: "Invalid credentials" });
 
-        if (isMatch) {
-            const token = createToken(user._id);
-            res.json({ success: true, token });
-        } else {
-            res.json({ success: false, message: "Invalid credentials" });
-        }
+        const token = createToken(user._id);
+        return res.json({ success: true, token });
 
     } catch (error) {
-        console.log(error);
-        res.json({ success: false, message: error.message });
+        console.error("Login Error:", error);
+        return res.status(500).json({ success: false, message: "Server error during login" });
     }
-}
+};
 
-// --- GET PROFILE ---
+// --- 4. GET PROFILE ---
 const getUserProfile = async (req, res) => {
     try {
         const { userId } = req.body;
-        const user = await userModel.findById(userId).select('-password');
-        res.json({ success: true, userData: user });
+        const user = await userModel.findById(userId).select("-password");
+        return res.json({ success: true, userData: user });
     } catch (error) {
-        console.log(error);
-        res.json({ success: false, message: error.message });
+        console.error("Get Profile Error:", error);
+        return res.status(500).json({ success: false, message: "Server error" });
     }
-}
+};
 
-// --- UPDATE PROFILE ---
+// --- 5. UPDATE PROFILE ---
 const updateProfile = async (req, res) => {
     try {
         const { userId, name, phone, address, password } = req.body;
         const updateData = { name, phone, address };
 
-        if(password) {
-             const salt = await bcrypt.genSalt(10);
-             updateData.password = await bcrypt.hash(password, salt);
+        if (password) {
+            const salt = await bcrypt.genSalt(10);
+            updateData.password = await bcrypt.hash(password, salt);
         }
 
         await userModel.findByIdAndUpdate(userId, updateData);
-        res.json({ success: true, message: "Profile Updated" });
+        return res.json({ success: true, message: "Profile updated successfully" });
 
     } catch (error) {
-        console.log(error);
-        res.json({ success: false, message: error.message });
+        console.error("Update Profile Error:", error);
+        return res.status(500).json({ success: false, message: "Server error" });
     }
-}
+};
 
-// --- TOGGLE WISHLIST ---
+// --- 6. TOGGLE WISHLIST ---
 const toggleWishlist = async (req, res) => {
     try {
         const { userId, productId } = req.body;
         const user = await userModel.findById(userId);
 
         if (user.wishlist.includes(productId)) {
-            // Remove
             user.wishlist = user.wishlist.filter(id => id !== productId);
             await user.save();
-            res.json({ success: true, message: "Removed from Wishlist", wishlist: user.wishlist });
+            return res.json({ success: true, message: "Removed from wishlist", wishlist: user.wishlist });
         } else {
-            // Add
             user.wishlist.push(productId);
             await user.save();
-            res.json({ success: true, message: "Added to Wishlist", wishlist: user.wishlist });
+            return res.json({ success: true, message: "Added to wishlist", wishlist: user.wishlist });
         }
-    } catch (error) {
-        console.log(error);
-        res.json({ success: false, message: error.message });
-    }
-}
 
-// --- ADMIN LOGIN ---
+    } catch (error) {
+        console.error("Toggle Wishlist Error:", error);
+        return res.status(500).json({ success: false, message: "Server error" });
+    }
+};
+
+// --- 7. ADMIN LOGIN ---
 const adminLogin = async (req, res) => {
     try {
         const { email, password } = req.body;
         if (email === process.env.ADMIN_EMAIL && password === process.env.ADMIN_PASSWORD) {
             const token = jwt.sign(email + password, process.env.JWT_SECRET);
-            res.json({ success: true, token });
+            return res.json({ success: true, token });
         } else {
-            res.json({ success: false, message: "Invalid credentials" });
+            return res.json({ success: false, message: "Invalid credentials" });
         }
     } catch (error) {
-        console.log(error);
-        res.json({ success: false, message: error.message });
+        console.error("Admin Login Error:", error);
+        return res.status(500).json({ success: false, message: "Server error" });
     }
-}
+};
 
-// --- ADMIN: LIST ALL USERS ---
+// --- 8. ADMIN: LIST / DELETE / GET SINGLE / MANAGE USERS ---
 const allUsers = async (req, res) => {
     try {
-        const users = await userModel.find({}).select('-password');
-        res.json({ success: true, users });
+        const users = await userModel.find({}).select("-password");
+        return res.json({ success: true, users });
     } catch (error) {
-        console.log(error);
-        res.json({ success: false, message: error.message });
+        console.error("All Users Error:", error);
+        return res.status(500).json({ success: false, message: "Server error" });
     }
-}
+};
 
-// --- ADMIN: DELETE USER ---
 const deleteUser = async (req, res) => {
     try {
         const { id } = req.body;
         await userModel.findByIdAndDelete(id);
-        res.json({ success: true, message: "User Deleted" });
+        return res.json({ success: true, message: "User deleted successfully" });
     } catch (error) {
-        console.log(error);
-        res.json({ success: false, message: error.message });
+        console.error("Delete User Error:", error);
+        return res.status(500).json({ success: false, message: "Server error" });
     }
-}
+};
 
-// --- ADMIN: GET SINGLE USER ---
 const getSingleUser = async (req, res) => {
     try {
         const { id } = req.body;
-        const user = await userModel.findById(id).select('-password');
-        res.json({ success: true, user });
+        const user = await userModel.findById(id).select("-password");
+        return res.json({ success: true, user });
     } catch (error) {
-        console.log(error);
-        res.json({ success: false, message: error.message });
+        console.error("Get Single User Error:", error);
+        return res.status(500).json({ success: false, message: "Server error" });
     }
-}
+};
 
-// --- ADMIN: MANAGE USER (ADD/EDIT) ---
 const adminManageUser = async (req, res) => {
     try {
         const { id, name, email, phone, password, street, city, state, zipcode, country } = req.body;
         const address = { street, city, state, zipcode, country };
 
         if (id) {
-            // Update
+            // Update existing user
             const updateData = { name, email, phone, address };
             if (password && password.length > 0) {
                 if (password.length < 8) return res.json({ success: false, message: "Password too short" });
@@ -234,9 +221,9 @@ const adminManageUser = async (req, res) => {
                 updateData.password = await bcrypt.hash(password, salt);
             }
             await userModel.findByIdAndUpdate(id, updateData);
-            res.json({ success: true, message: "User Updated Successfully" });
+            return res.json({ success: true, message: "User updated successfully" });
         } else {
-            // Create
+            // Create new user
             const exists = await userModel.findOne({ email });
             if (exists) return res.json({ success: false, message: "User already exists" });
             if (!validator.isEmail(email)) return res.json({ success: false, message: "Invalid email" });
@@ -247,24 +234,25 @@ const adminManageUser = async (req, res) => {
             const newUser = new userModel({ name, email, phone, password: hashedPassword, address });
 
             await newUser.save();
-            res.json({ success: true, message: "User Created Successfully" });
+            return res.json({ success: true, message: "User created successfully" });
         }
-    } catch (error) {
-        console.log(error);
-        res.json({ success: false, message: error.message });
-    }
-}
 
-export { 
-    sendOtp, // New
-    registerUser, // Updated
-    loginUser, 
-    getUserProfile, 
-    updateProfile, 
-    toggleWishlist, 
-    adminLogin, 
-    allUsers, 
-    deleteUser, 
-    getSingleUser, 
-    adminManageUser 
+    } catch (error) {
+        console.error("Admin Manage User Error:", error);
+        return res.status(500).json({ success: false, message: "Server error" });
+    }
+};
+
+export {
+    sendOtp,
+    registerUser,
+    loginUser,
+    getUserProfile,
+    updateProfile,
+    toggleWishlist,
+    adminLogin,
+    allUsers,
+    deleteUser,
+    getSingleUser,
+    adminManageUser
 };

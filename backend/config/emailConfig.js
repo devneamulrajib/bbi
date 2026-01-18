@@ -1,32 +1,39 @@
-import nodemailer from 'nodemailer';
+import Brevo from "@getbrevo/brevo";
 
-const transporter = nodemailer.createTransport({
-    host: 'smtp.gmail.com', // Use explicit host
-    port: 587,              // Use Port 587 (TLS) instead of 465 (SSL)
-    secure: false,          // Must be 'false' for port 587
-    auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS
-    },
-    tls: {
-        rejectUnauthorized: false // Helps avoid certificate errors on cloud servers
-    }
-});
+const apiInstance = new Brevo.TransactionalEmailsApi();
+
+apiInstance.setApiKey(
+  Brevo.TransactionalEmailsApiApiKeys.apiKey,
+  process.env.BREVO_API_KEY
+);
 
 export const sendOtpEmail = async (email, otp) => {
-    const mailOptions = {
-        from: `"Verification" <${process.env.EMAIL_USER}>`, // Adds a nice sender name
-        to: email,
-        subject: 'Verify Your Account - OTP',
-        text: `Your Verification Code is: ${otp}. This code expires in 5 minutes.`
-    };
+  try {
+    await apiInstance.sendTransacEmail({
+      subject: "Verify Your Account - OTP",
+      sender: {
+        email: "no-reply@babaibangladesh.com",
+        name: "Babai Bangladesh"
+      },
+      to: [
+        {
+          email: email
+        }
+      ],
+      textContent: `Your verification code is ${otp}. This code will expire in 5 minutes.`,
+      htmlContent: `
+        <h3>Account Verification</h3>
+        <p>Your OTP code is:</p>
+        <h2>${otp}</h2>
+        <p>This code will expire in <b>5 minutes</b>.</p>
+      `
+    });
 
-    try {
-        await transporter.sendMail(mailOptions);
-        console.log(`Email sent successfully to ${email}`);
-        return true;
-    } catch (error) {
-        console.error("Email Error:", error);
-        return false;
-    }
-}
+    console.log("OTP email sent successfully to", email);
+    return true;
+
+  } catch (error) {
+    console.error("Brevo Email Error:", error);
+    return false;
+  }
+};
