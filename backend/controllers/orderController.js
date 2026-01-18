@@ -60,13 +60,10 @@ const updateStatus = async (req, res) => {
         
         let updateData = {};
         
-        // Update Order Status (e.g., Shipped, Delivered)
         if (status) {
             updateData.status = status;
         }
 
-        // Update Payment Status (e.g., Paid/Unpaid)
-        // We check for undefined because payment can be 'false'
         if (payment !== undefined) {
             updateData.payment = payment;
         }
@@ -92,4 +89,103 @@ const deleteOrder = async (req, res) => {
     }
 }
 
-export { placeOrder, allOrders, userOrders, updateStatus, deleteOrder };
+// --- NEW FUNCTION: Dashboard Stats ---
+const adminDashboard = async (req, res) => {
+    try {
+        const orders = await orderModel.find({});
+
+        const totalOrders = orders.length;
+        const totalRevenue = orders.reduce((sum, order) => sum + (order.amount || 0), 0);
+
+        // Status Counts
+        // Note: Adjust the status strings ('Order Placed', 'Packing') to match what you use in your app
+        const pendingOrders = orders.filter(o => 
+            o.status === 'Order Placed' || o.status === 'Pending' || o.status === undefined
+        ).length;
+        
+        const processingOrders = orders.filter(o => 
+            o.status === 'Processing' || o.status === 'Packing' || o.status === 'Shipped'
+        ).length;
+        
+        const deliveredOrders = orders.filter(o => o.status === 'Delivered').length;
+
+        // Today's Stats
+        const today = new Date();
+        today.setHours(0, 0, 0, 0); // Start of today
+        const todayTimestamp = today.getTime();
+
+        const todaysOrders = orders.filter(o => o.date >= todayTimestamp);
+        const todaysRevenue = todaysOrders.reduce((sum, o) => sum + (o.amount || 0), 0);
+        const todaysCount = todaysOrders.length;
+
+        // Sales Chart Data (Last 7 Days)
+        const salesData = [];
+        for (let i = 6; i >= 0; i--) {
+            const d = new Date();
+            d.setDate(d.getDate() - i);
+            d.setHours(0, 0, 0, 0);
+            
+            const dayStart = d.getTime();
+            const dayEnd = dayStart + (24 * 60 * 60 * 1000);
+
+            // Filter orders for this specific day
+            const dailyRevenue = orders
+                .filter(o => o.date >= dayStart && o.date < dayEnd)
+                .reduce((acc, o) => acc + (o.amount || 0), 0);
+
+            salesData.push({
+                name: d.toLocaleDateString('en-US', { weekday: 'short' }), // "Mon", "Tue"
+                date: d.toISOString().split('T')[0],
+                sales: dailyRevenue
+            });
+        }
+
+        // Best Selling Products
+        let productMap = {};
+        orders.forEach(order => {
+            if (order.items && Array.isArray(order.items)) {
+                order.items.forEach(item => {
+                    // Use item name as key
+                    const key = item.name; 
+                    if (!productMap[key]) {
+                        productMap[key] = { name: key, count: 0, revenue: 0 };
+                    }
+                    productMap[key].count += (item.quantity || 1);
+                    productMap[key].revenue += ((item.price || 0) * (item.quantity || 1));
+                });
+            }
+        });
+
+        // Convert object to array, sort by count desc, take top 5
+        const bestSellers = Object.values(productMap)
+            .sort((a, b) => b.count - a.count)
+            .slice(0, 5);
+
+        // Recent Orders (Last 5)
+        const recentOrders = [...orders]
+            .sort((a, b) => b.date - a.date)
+            .slice(0, 5);
+
+        res.json({
+            success: true,
+            stats: {
+                totalOrders,
+                totalRevenue,
+                pendingOrders,
+                processingOrders,
+                deliveredOrders,
+                todaysRevenue,
+                todaysCount
+            },
+            salesData,
+            bestSellers,
+            recentOrders
+        });
+
+    } catch (error) {
+        console.log(error);
+        res.json({ success: false, message: error.message });
+    }
+}
+
+export { placeOrder, allOrders, userOrders, updateStatus, deleteOrder, adminDashboard };

@@ -6,7 +6,7 @@ import Add from './pages/Add'
 import List from './pages/List'
 import Orders from './pages/Orders'
 import Login from './components/Login'
-import Category from './pages/Category' // Ensure this file exists in pages folder
+import Category from './pages/Category'
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import Poster from './pages/Poster'
@@ -15,6 +15,7 @@ import HomeConfig from './pages/HomeConfig'
 import Content from './pages/Content';
 import Users from './pages/Users'
 import ManageUser from './pages/ManageUser'
+import Dashboard from './pages/Dashboard'; // Already imported
 import Reviews from './pages/Reviews'
 
 export const backendUrl = import.meta.env.VITE_BACKEND_URL
@@ -39,6 +40,10 @@ const App = () => {
             <Sidebar />
             <div className='w-[70%] mx-auto ml-[max(5vw,25px)] my-8 text-gray-600 text-base'>
               <Routes>
+                {/* Dashboard is the default Home Route */}
+                <Route path='/' element={<Dashboard token={token} url={backendUrl} />} /> 
+                <Route path='/dashboard' element={<Dashboard token={token} url={backendUrl} />} />
+                
                 <Route path='/add' element={<Add token={token} />} />
                 <Route path='/list' element={<List token={token} />} />
                 <Route path='/orders' element={<Orders token={token} />} />
@@ -49,7 +54,7 @@ const App = () => {
                 <Route path='/users' element={<Users token={token} />} />
                 <Route path='/reviews' element={<Reviews token={token} />} />
                 <Route path='/manage-user' element={<ManageUser token={token} />} />
-                <Route path='/category' element={<Category token={token} />} /> {/* <--- Added this Route */}
+                <Route path='/category' element={<Category token={token} />} />
               </Routes>
             </div>
           </div>

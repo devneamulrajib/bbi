@@ -1,43 +1,111 @@
 import React from 'react'
 import { NavLink } from 'react-router-dom'
-import { PlusCircle, List, ShoppingBag, FolderPlus } from 'lucide-react' // Import FolderPlus icon
-import { LayoutTemplate } from 'lucide-react'
-import { Settings } from 'lucide-react'
-import { MessageSquare } from 'lucide-react'
-import { FileText } from 'lucide-react';
-import { Users } from 'lucide-react'
-
+import { 
+  PlusCircle, 
+  List, 
+  ShoppingBag, 
+  FolderPlus, 
+  LayoutTemplate, 
+  Settings, 
+  MessageSquare, 
+  FileText, 
+  Users, 
+  LayoutDashboard // Import the Dashboard Icon
+} from 'lucide-react'
 
 const Sidebar = () => {
   return (
-    <div className='w-[18%] min-h-screen border-r-2'>
-        <div className='flex flex-col gap-4 pt-6 pl-[20%]'>
-            <NavLink className='flex items-center gap-3 border border-gray-300 border-r-0 px-3 py-2 rounded-l' to="/add">
-                <PlusCircle size={20} /><p className='hidden md:block'>Add Items</p>
+    <div className='w-[18%] min-h-screen border-r-2 bg-white'>
+        <div className='flex flex-col gap-4 pt-6 pl-[20%] text-[15px]'>
+            
+            {/* 1. Dashboard Link (New) */}
+            <NavLink 
+                to="/" 
+                className={({ isActive }) => `flex items-center gap-3 border border-gray-300 border-r-0 px-3 py-2 rounded-l transition-all ${isActive ? 'bg-gray-100 border-r-4 border-r-black font-medium' : 'hover:bg-gray-50'}`}
+            >
+                <LayoutDashboard size={20} />
+                <p className='hidden md:block'>Dashboard</p>
             </NavLink>
-            <NavLink className='flex items-center gap-3 border border-gray-300 border-r-0 px-3 py-2 rounded-l' to="/list">
-                <List size={20} /><p className='hidden md:block'>List Items</p>
+
+            {/* 2. Add Items */}
+            <NavLink 
+                to="/add" 
+                className={({ isActive }) => `flex items-center gap-3 border border-gray-300 border-r-0 px-3 py-2 rounded-l transition-all ${isActive ? 'bg-gray-100 border-r-4 border-r-black font-medium' : 'hover:bg-gray-50'}`}
+            >
+                <PlusCircle size={20} />
+                <p className='hidden md:block'>Add Items</p>
             </NavLink>
-             <NavLink className='flex items-center gap-3 border border-gray-300 border-r-0 px-3 py-2 rounded-l' to="/category">
-                <FolderPlus size={20} /><p className='hidden md:block'>Categories</p>
+
+            {/* 3. List Items */}
+            <NavLink 
+                to="/list" 
+                className={({ isActive }) => `flex items-center gap-3 border border-gray-300 border-r-0 px-3 py-2 rounded-l transition-all ${isActive ? 'bg-gray-100 border-r-4 border-r-black font-medium' : 'hover:bg-gray-50'}`}
+            >
+                <List size={20} />
+                <p className='hidden md:block'>List Items</p>
             </NavLink>
-            <NavLink className='flex items-center gap-3 border border-gray-300 border-r-0 px-3 py-2 rounded-l' to="/orders">
-                <ShoppingBag size={20} /><p className='hidden md:block'>Orders</p>
+
+            {/* 4. Categories */}
+            <NavLink 
+                to="/category" 
+                className={({ isActive }) => `flex items-center gap-3 border border-gray-300 border-r-0 px-3 py-2 rounded-l transition-all ${isActive ? 'bg-gray-100 border-r-4 border-r-black font-medium' : 'hover:bg-gray-50'}`}
+            >
+                <FolderPlus size={20} />
+                <p className='hidden md:block'>Categories</p>
             </NavLink>
-            <NavLink className='flex items-center gap-3 border border-gray-300 border-r-0 px-3 py-2 rounded-l' to="/poster">
-                <LayoutTemplate size={20} /><p className='hidden md:block'>Feature Poster</p>
+
+            {/* 5. Orders */}
+            <NavLink 
+                to="/orders" 
+                className={({ isActive }) => `flex items-center gap-3 border border-gray-300 border-r-0 px-3 py-2 rounded-l transition-all ${isActive ? 'bg-gray-100 border-r-4 border-r-black font-medium' : 'hover:bg-gray-50'}`}
+            >
+                <ShoppingBag size={20} />
+                <p className='hidden md:block'>Orders</p>
             </NavLink>
-            <NavLink className='flex items-center gap-3 border border-gray-300 border-r-0 px-3 py-2 rounded-l' to="/config">
-                <Settings size={20} /><p className='hidden md:block'>Home Settings</p>
+
+            {/* 6. Feature Poster */}
+            <NavLink 
+                to="/poster" 
+                className={({ isActive }) => `flex items-center gap-3 border border-gray-300 border-r-0 px-3 py-2 rounded-l transition-all ${isActive ? 'bg-gray-100 border-r-4 border-r-black font-medium' : 'hover:bg-gray-50'}`}
+            >
+                <LayoutTemplate size={20} />
+                <p className='hidden md:block'>Feature Poster</p>
             </NavLink>
-            <NavLink className='flex items-center gap-3 border border-gray-300 border-r-0 px-3 py-2 rounded-l' to="/content">
-                <FileText size={20} /><p className='hidden md:block'>Page Content</p>
+
+            {/* 7. Home Settings */}
+            <NavLink 
+                to="/config" 
+                className={({ isActive }) => `flex items-center gap-3 border border-gray-300 border-r-0 px-3 py-2 rounded-l transition-all ${isActive ? 'bg-gray-100 border-r-4 border-r-black font-medium' : 'hover:bg-gray-50'}`}
+            >
+                <Settings size={20} />
+                <p className='hidden md:block'>Home Settings</p>
             </NavLink>
-            <NavLink className='flex items-center gap-3 border border-gray-300 border-r-0 px-3 py-2 rounded-l' to="/reviews">
-                <MessageSquare size={20} /><p className='hidden md:block'>Reviews</p>
+
+            {/* 8. Page Content */}
+            <NavLink 
+                to="/content" 
+                className={({ isActive }) => `flex items-center gap-3 border border-gray-300 border-r-0 px-3 py-2 rounded-l transition-all ${isActive ? 'bg-gray-100 border-r-4 border-r-black font-medium' : 'hover:bg-gray-50'}`}
+            >
+                <FileText size={20} />
+                <p className='hidden md:block'>Page Content</p>
             </NavLink>
-            <NavLink className='flex items-center gap-3 border border-gray-300 border-r-0 px-3 py-2 rounded-l' to="/users">
-                <Users size={20} /><p className='hidden md:block'>Users</p>
+
+            {/* 9. Reviews */}
+            <NavLink 
+                to="/reviews" 
+                className={({ isActive }) => `flex items-center gap-3 border border-gray-300 border-r-0 px-3 py-2 rounded-l transition-all ${isActive ? 'bg-gray-100 border-r-4 border-r-black font-medium' : 'hover:bg-gray-50'}`}
+            >
+                <MessageSquare size={20} />
+                <p className='hidden md:block'>Reviews</p>
+            </NavLink>
+
+            {/* 10. Users */}
+            <NavLink 
+                to="/users" 
+                className={({ isActive }) => `flex items-center gap-3 border border-gray-300 border-r-0 px-3 py-2 rounded-l transition-all ${isActive ? 'bg-gray-100 border-r-4 border-r-black font-medium' : 'hover:bg-gray-50'}`}
+            >
+                <Users size={20} />
+                <p className='hidden md:block'>Users</p>
             </NavLink>
         </div>
     </div>
