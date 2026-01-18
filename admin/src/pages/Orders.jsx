@@ -4,7 +4,7 @@ import { backendUrl } from '../App'
 import { toast } from 'react-toastify'
 import { assets } from '../assets/assets' 
 import jsPDF from 'jspdf'
-import autoTable from 'jspdf-autotable' // <--- FIXED IMPORT
+import autoTable from 'jspdf-autotable' 
 import { 
   Search, RefreshCcw, Download, Printer, Eye, X, 
   Trash2, CheckCircle, XCircle 
@@ -126,22 +126,22 @@ const Orders = ({ token }) => {
     setEndDate('');
   }
 
-  // --- PDF GENERATOR (FIXED) ---
+  // --- PDF GENERATOR (UPDATED) ---
   const generateInvoice = (order) => {
     try {
         const doc = new jsPDF();
-        const currency = '$'; 
+        const currency = 'Tk '; // Changed to Tk for Bangladesh context, or use '$'
 
-        // 1. LOGO HANDLING
+        // 1. LOGO
         try {
             if (assets.logo) {
                 doc.addImage(assets.logo, 'PNG', 10, 10, 20, 20); 
             }
         } catch (imgError) {
-            console.warn("Logo failed to load (ignoring):", imgError);
+            console.warn("Logo failed to load");
         }
 
-        // 2. BRANDING TEXT
+        // 2. HEADER
         doc.setFontSize(20);
         doc.setTextColor(0, 100, 0); // Green
         doc.text("BabaiBangladesh", 35, 20);
@@ -151,17 +151,29 @@ const Orders = ({ token }) => {
         doc.text("www.babaibangladesh.com", 35, 26);
         doc.text("Dhaka, Bangladesh", 35, 31);
 
-        // 3. INVOICE INFO
+        // 3. INVOICE META DATA
         doc.setFontSize(14);
         doc.setTextColor(0);
         doc.text("INVOICE", 160, 20);
+        
         doc.setFontSize(10);
         doc.text(`#${order._id.slice(-6).toUpperCase()}`, 160, 26);
-        
         const orderDate = order.date ? new Date(order.date).toLocaleDateString() : 'N/A';
-        doc.text(`Date: ${orderDate}`, 160, 32);
+        doc.text(`Date: ${orderDate}`, 160, 31);
+
+        // --- NEW: PAYMENT STATUS ---
+        const paymentStatus = order.payment ? "PAID" : "UNPAID";
+        doc.setFontSize(12);
+        if (order.payment) {
+            doc.setTextColor(0, 128, 0); // Green
+        } else {
+            doc.setTextColor(200, 0, 0); // Red
+        }
+        doc.text(paymentStatus, 160, 38);
+        doc.setTextColor(0); // Reset color
 
         // 4. BILL TO
+        doc.setFontSize(10);
         doc.text("Bill To:", 10, 50);
         doc.setTextColor(60);
         const fullName = `${order.address.firstName || ''} ${order.address.lastName || ''}`;
@@ -169,23 +181,25 @@ const Orders = ({ token }) => {
         doc.text(order.address.phone || '', 10, 61);
         doc.text(`${order.address.street || ''}, ${order.address.city || ''}`, 10, 66);
 
-        // 5. ITEMS TABLE
+        // 5. TABLE
         const tableColumn = ["Item", "Size", "Qty", "Price", "Total"];
         const tableRows = [];
-        
+        let subtotal = 0;
+
         if (order.items && Array.isArray(order.items)) {
             order.items.forEach(item => {
+                const itemTotal = item.price * item.quantity;
+                subtotal += itemTotal;
                 tableRows.push([
                     item.name,
-                    item.size || 'N/A',
+                    item.size || '-',
                     item.quantity,
                     `${currency}${item.price}`,
-                    `${currency}${item.price * item.quantity}`,
+                    `${currency}${itemTotal}`,
                 ]);
             });
         }
 
-        // Use autoTable as a function call instead of doc.autoTable
         autoTable(doc, {
             head: [tableColumn],
             body: tableRows,
@@ -194,11 +208,47 @@ const Orders = ({ token }) => {
             headStyles: { fillColor: [0, 100, 0] }
         });
 
-        // 6. TOTAL AMOUNT
+        // 6. CALCULATIONS (Delivery, Discount, Total)
+        // If deliveryCharge exists in DB use it, otherwise calculate diff (Total - Subtotal)
+        // This is a smart fallback if your DB schema doesn't have 'deliveryCharge' field yet
+        let deliveryCharge = order.deliveryCharge || (order.amount > subtotal ? order.amount - subtotal : 0);
+        let discount = order.discount || 0; // Assuming 0 if no field
+        
+        // If there was a coupon, show it
         const finalY = (doc.lastAutoTable && doc.lastAutoTable.finalY) ? doc.lastAutoTable.finalY + 10 : 100;
+        
         doc.setTextColor(0);
+        doc.setFontSize(10);
+
+        // Right-aligned math
+        const xLabel = 140;
+        const xValue = 190;
+        let currentY = finalY;
+
+        // Subtotal
+        doc.text("Subtotal:", xLabel, currentY);
+        doc.text(`${currency}${subtotal}`, xValue, currentY, { align: 'right' });
+        currentY += 6;
+
+        // Delivery
+        doc.text("Delivery Charge:", xLabel, currentY);
+        doc.text(`${currency}${deliveryCharge}`, xValue, currentY, { align: 'right' });
+        currentY += 6;
+
+        // Coupon / Discount (Only show if used)
+        if (order.coupon || discount > 0) {
+            doc.setTextColor(0, 100, 0); // Green for discount
+            doc.text(`Discount (${order.coupon || 'Coupon'}):`, xLabel, currentY);
+            doc.text(`-${currency}${discount}`, xValue, currentY, { align: 'right' });
+            doc.setTextColor(0);
+            currentY += 6;
+        }
+
+        // Grand Total
         doc.setFontSize(12);
-        doc.text(`Total Amount: ${currency}${order.amount}`, 140, finalY);
+        doc.setFont("helvetica", "bold");
+        doc.text("Grand Total:", xLabel, currentY + 2);
+        doc.text(`${currency}${order.amount}`, xValue, currentY + 2, { align: 'right' });
 
         // 7. SAVE
         doc.save(`invoice_${order._id.slice(-6)}.pdf`);
@@ -212,7 +262,7 @@ const Orders = ({ token }) => {
   // --- CSV EXPORT ---
   const downloadReport = () => {
     try {
-        let csvContent = "data:text/csv;charset=utf-8,ID,Date,Name,Amount,Status,Method\n";
+        let csvContent = "data:text/csv;charset=utf-8,ID,Date,Name,Total,Status,Payment\n";
         filteredOrders.forEach(o => {
             const date = o.date ? new Date(o.date).toLocaleDateString() : 'N/A';
             const name = o.address ? `${o.address.firstName} ${o.address.lastName}` : 'Guest';
@@ -401,6 +451,9 @@ const Orders = ({ token }) => {
                               <h1 className='text-2xl font-bold text-gray-800'>INVOICE</h1>
                               <p className='text-sm text-gray-500'>#{selectedOrder._id.slice(-6).toUpperCase()}</p>
                               <p className='text-sm text-gray-500'>{selectedOrder.date ? new Date(selectedOrder.date).toLocaleDateString() : ''}</p>
+                              <p className={`font-bold mt-1 ${selectedOrder.payment ? 'text-green-600' : 'text-red-500'}`}>
+                                  {selectedOrder.payment ? "PAID" : "UNPAID"}
+                              </p>
                           </div>
                       </div>
 
@@ -414,13 +467,14 @@ const Orders = ({ token }) => {
                               <p className='text-gray-500'>{selectedOrder.address.phone}</p>
                           </div>
                           <div>
-                            <h3 className='font-bold text-gray-700 border-b pb-1 mb-2'>Status</h3>
-                            <p>Payment: <span className='font-semibold'>{selectedOrder.paymentMethod}</span> ({selectedOrder.payment ? 'Paid' : 'Pending'})</p>
-                            <p>Order Status: <span className='font-semibold text-blue-600'>{selectedOrder.status}</span></p>
+                            <h3 className='font-bold text-gray-700 border-b pb-1 mb-2'>Details</h3>
+                            <p>Method: <span className='font-semibold'>{selectedOrder.paymentMethod}</span></p>
+                            <p>Status: <span className='font-semibold text-blue-600'>{selectedOrder.status}</span></p>
+                            {selectedOrder.coupon && <p className='text-green-600'>Coupon Used: {selectedOrder.coupon}</p>}
                           </div>
                       </div>
 
-                      <table className='w-full mb-6 border text-sm'>
+                      <table className='w-full mb-4 border text-sm'>
                           <thead className='bg-gray-50 text-gray-700'>
                               <tr>
                                   <th className='p-2 text-left'>Item</th>
@@ -442,9 +496,33 @@ const Orders = ({ token }) => {
                           </tbody>
                       </table>
 
-                      <div className='flex justify-end text-lg font-bold text-gray-800'>
-                          Total: ${selectedOrder.amount}
+                      {/* Summary Calculation in Modal */}
+                      <div className='flex justify-end'>
+                          <div className='w-48 text-sm'>
+                              {/* Logic to show breakdown even if DB doesn't have separate fields yet */}
+                              {(() => {
+                                  const subtotal = selectedOrder.items.reduce((acc, item) => acc + item.price * item.quantity, 0);
+                                  const delivery = selectedOrder.deliveryCharge || (selectedOrder.amount > subtotal ? selectedOrder.amount - subtotal : 0);
+                                  return (
+                                      <>
+                                        <div className='flex justify-between py-1 border-b'>
+                                            <span className='text-gray-600'>Subtotal:</span>
+                                            <span>${subtotal}</span>
+                                        </div>
+                                        <div className='flex justify-between py-1 border-b'>
+                                            <span className='text-gray-600'>Delivery:</span>
+                                            <span>${delivery}</span>
+                                        </div>
+                                        <div className='flex justify-between py-2 text-lg font-bold text-gray-800'>
+                                            <span>Total:</span>
+                                            <span>${selectedOrder.amount}</span>
+                                        </div>
+                                      </>
+                                  )
+                              })()}
+                          </div>
                       </div>
+
                   </div>
                   <div className='p-4 border-t bg-gray-50 flex justify-end'>
                       <button onClick={() => generateInvoice(selectedOrder)} className='bg-gray-800 text-white px-4 py-2 rounded flex items-center gap-2 hover:bg-gray-700'>
