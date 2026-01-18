@@ -4,7 +4,7 @@ import { backendUrl } from '../App'
 import { toast } from 'react-toastify'
 import { assets } from '../assets/assets' 
 import jsPDF from 'jspdf'
-import 'jspdf-autotable'
+import autoTable from 'jspdf-autotable' // <--- FIXED IMPORT
 import { 
   Search, RefreshCcw, Download, Printer, Eye, X, 
   Trash2, CheckCircle, XCircle 
@@ -35,7 +35,6 @@ const Orders = ({ token }) => {
       const response = await axios.post(backendUrl + '/api/order/list', {}, { headers: { token } })
       if (response.data.success) {
         setOrders(response.data.orders)
-        // Note: Filter useEffect will populate filteredOrders
       } else {
         toast.error(response.data.message)
       }
@@ -127,15 +126,13 @@ const Orders = ({ token }) => {
     setEndDate('');
   }
 
-  // --- PDF GENERATOR (FIXED & ROBUST) ---
+  // --- PDF GENERATOR (FIXED) ---
   const generateInvoice = (order) => {
     try {
-        console.log("Generating PDF for:", order._id);
         const doc = new jsPDF();
         const currency = '$'; 
-        
-        // 1. LOGO HANDLING (SAFE MODE)
-        // If image fails, it won't crash the PDF
+
+        // 1. LOGO HANDLING
         try {
             if (assets.logo) {
                 doc.addImage(assets.logo, 'PNG', 10, 10, 20, 20); 
@@ -169,9 +166,8 @@ const Orders = ({ token }) => {
         doc.setTextColor(60);
         const fullName = `${order.address.firstName || ''} ${order.address.lastName || ''}`;
         doc.text(fullName, 10, 56);
-        doc.text(order.address.email || '', 10, 61);
+        doc.text(order.address.phone || '', 10, 61);
         doc.text(`${order.address.street || ''}, ${order.address.city || ''}`, 10, 66);
-        doc.text(order.address.phone || '', 10, 71);
 
         // 5. ITEMS TABLE
         const tableColumn = ["Item", "Size", "Qty", "Price", "Total"];
@@ -189,7 +185,8 @@ const Orders = ({ token }) => {
             });
         }
 
-        doc.autoTable({
+        // Use autoTable as a function call instead of doc.autoTable
+        autoTable(doc, {
             head: [tableColumn],
             body: tableRows,
             startY: 80,
@@ -198,14 +195,12 @@ const Orders = ({ token }) => {
         });
 
         // 6. TOTAL AMOUNT
-        // Ensure lastAutoTable exists, otherwise default to 100
         const finalY = (doc.lastAutoTable && doc.lastAutoTable.finalY) ? doc.lastAutoTable.finalY + 10 : 100;
         doc.setTextColor(0);
         doc.setFontSize(12);
         doc.text(`Total Amount: ${currency}${order.amount}`, 140, finalY);
 
         // 7. SAVE
-        console.log("Saving PDF...");
         doc.save(`invoice_${order._id.slice(-6)}.pdf`);
     
     } catch (err) {
