@@ -17,6 +17,7 @@ import Users from './pages/Users'
 import ManageUser from './pages/ManageUser'
 import Dashboard from './pages/Dashboard'; // Already imported
 import Reviews from './pages/Reviews'
+import Profile from './pages/Profile';
 
 export const backendUrl = import.meta.env.VITE_BACKEND_URL
 
@@ -52,6 +53,7 @@ const App = () => {
                 <Route path='/config' element={<HomeConfig token={token} />} />
                 <Route path='/content' element={<Content token={token} />} />
                 <Route path='/users' element={<Users token={token} />} />
+                <Route path='/profile' element={<Profile token={token} />} />
                 <Route path='/reviews' element={<Reviews token={token} />} />
                 <Route path='/manage-user' element={<ManageUser token={token} />} />
                 <Route path='/category' element={<Category token={token} />} />

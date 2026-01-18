@@ -4,6 +4,7 @@ import { sendOtpEmail } from "../config/emailConfig.js"; // Brevo Email Helper
 import validator from "validator";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
+import { v2 as cloudinary } from 'cloudinary'; // Added for Profile Image Upload
 
 // Create JWT Token
 const createToken = (id) => {
@@ -109,7 +110,7 @@ const loginUser = async (req, res) => {
     }
 };
 
-// --- 4. GET PROFILE ---
+// --- 4. GET PROFILE (Frontend User) ---
 const getUserProfile = async (req, res) => {
     try {
         const { userId } = req.body;
@@ -121,7 +122,7 @@ const getUserProfile = async (req, res) => {
     }
 };
 
-// --- 5. UPDATE PROFILE ---
+// --- 5. UPDATE PROFILE (Frontend User) ---
 const updateProfile = async (req, res) => {
     try {
         const { userId, name, phone, address, password } = req.body;
@@ -248,6 +249,47 @@ const adminManageUser = async (req, res) => {
     }
 };
 
+// --- 9. ADMIN PROFILE (NEW) ---
+
+// Get Admin Profile Data
+const getAdminProfile = async (req, res) => {
+    try {
+        const { userId } = req.body; // Provided by auth middleware
+        const user = await userModel.findById(userId).select('-password');
+        
+        if (!user) {
+            return res.json({ success: false, message: "Admin profile not found" });
+        }
+        res.json({ success: true, user });
+    } catch (error) {
+        console.log(error);
+        res.json({ success: false, message: error.message });
+    }
+}
+
+// Update Admin Profile (With Image Upload)
+const updateAdminProfile = async (req, res) => {
+    try {
+        const { userId, name, email, phone, role } = req.body;
+        const imageFile = req.file;
+
+        let updateData = { name, email, phone, role };
+
+        if (imageFile) {
+            const imageUpload = await cloudinary.uploader.upload(imageFile.path, { resource_type: 'image' });
+            updateData.image = imageUpload.secure_url;
+        }
+
+        await userModel.findByIdAndUpdate(userId, updateData);
+
+        res.json({ success: true, message: "Profile Updated Successfully" });
+
+    } catch (error) {
+        console.log(error);
+        res.json({ success: false, message: error.message });
+    }
+}
+
 export {
     sendOtp,
     registerUser,
@@ -259,5 +301,7 @@ export {
     allUsers,
     deleteUser,
     getSingleUser,
-    adminManageUser
+    adminManageUser,
+    getAdminProfile,   // Export New Function
+    updateAdminProfile // Export New Function
 };
