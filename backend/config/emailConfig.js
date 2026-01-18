@@ -1,16 +1,21 @@
 import nodemailer from 'nodemailer';
 
 const transporter = nodemailer.createTransport({
-    service: 'gmail',
+    host: 'smtp.gmail.com', // Use explicit host
+    port: 587,              // Use Port 587 (TLS) instead of 465 (SSL)
+    secure: false,          // Must be 'false' for port 587
     auth: {
-        user: process.env.EMAIL_USER, // Your Email
-        pass: process.env.EMAIL_PASS  // Your App Password
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS
+    },
+    tls: {
+        rejectUnauthorized: false // Helps avoid certificate errors on cloud servers
     }
 });
 
 export const sendOtpEmail = async (email, otp) => {
     const mailOptions = {
-        from: process.env.EMAIL_USER,
+        from: `"Verification" <${process.env.EMAIL_USER}>`, // Adds a nice sender name
         to: email,
         subject: 'Verify Your Account - OTP',
         text: `Your Verification Code is: ${otp}. This code expires in 5 minutes.`
@@ -18,9 +23,10 @@ export const sendOtpEmail = async (email, otp) => {
 
     try {
         await transporter.sendMail(mailOptions);
+        console.log(`Email sent successfully to ${email}`);
         return true;
     } catch (error) {
-        console.log("Email Error:", error);
+        console.error("Email Error:", error);
         return false;
     }
 }
