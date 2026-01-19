@@ -21,15 +21,16 @@ app.use(express.json());
 
 // --- UPDATED CORS CONFIGURATION ---
 const allowedOrigins = [
-    'http://localhost:5173',           // Vite Localhost
-    'http://localhost:5174',           // Vite Admin Localhost
+    'http://localhost:5173',           // Rider App Localhost
+    'http://localhost:5174',           // Admin Panel Localhost
+    'http://localhost:5175',           // User Frontend Localhost (Fixed your issue here)
     'http://localhost:3000',           // CRA Localhost
     'https://babaibangladesh.com',     // Your Custom Domain
     'https://www.babaibangladesh.com', // Your Custom Domain (www)
+    'https://rider.babaibangladesh.com', // Rider App Production
+    'https://admin.babaibangladesh.com', // Admin Panel Production
     'https://babaibangladesh.vercel.app', // Your Vercel Frontend
-    // 👇 CRITICAL: Add your Admin Vercel Link here (Check Vercel for the exact link)
-    'https://babai-admin.vercel.app', 
-    'https://admin.babaibangladesh.com'
+    'https://babai-admin.vercel.app'
 ];
 
 app.use(cors({
@@ -54,7 +55,7 @@ const connectDB = async () => {
 connectDB();
 connectCloudinary();
 
-// API Endpoints (Duplicates removed)
+// API Endpoints
 app.use('/api/user', userRouter);
 app.use('/api/product', productRouter);
 app.use('/api/cart', cartRouter);
