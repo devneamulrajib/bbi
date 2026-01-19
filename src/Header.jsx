@@ -3,20 +3,20 @@ import { Link, useLocation } from 'react-router-dom';
 import { ShopContext } from './context/ShopContext';
 import { 
   ShieldCheck, Search, User, ShoppingBag, Menu, ChevronDown, ChevronRight, 
-  Apple, Beef, Egg, Coffee, Cookie, Snowflake, Candy, Wheat, FolderOpen, LogOut, X
+  Apple, Beef, Egg, Coffee, Cookie, Snowflake, Candy, Wheat, FolderOpen, LogOut, X, MapPin
 } from 'lucide-react';
 
 const Header = () => {
   const location = useLocation();
   const { 
-    categories, products, // <--- Need products for live search
+    categories, products, 
     getCartCount, getCartAmount, currency, 
     token, setToken, navigate, config,
     search, setSearch, setShowSearch 
   } = useContext(ShopContext);
   
   const [showCategories, setShowCategories] = useState(false);
-  const [liveResults, setLiveResults] = useState([]); // <--- State for dropdown results
+  const [liveResults, setLiveResults] = useState([]); 
   const catMenuRef = useRef(null);
   const searchRef = useRef(null);
 
@@ -28,34 +28,31 @@ const Header = () => {
       navigate('/login');
   }
 
-  // --- 1. Live Search Logic ---
+  // --- Live Search Logic ---
   useEffect(() => {
     if (search && search.length > 0 && products.length > 0) {
         const filtered = products.filter(item => 
             item.name.toLowerCase().includes(search.toLowerCase())
         );
-        setLiveResults(filtered.slice(0, 5)); // Show top 5 results
+        setLiveResults(filtered.slice(0, 5)); 
     } else {
         setLiveResults([]);
     }
   }, [search, products]);
 
-  // --- 2. Handle "Enter" Key ---
   const handleSearchSubmit = () => {
       setShowSearch(true);
-      setLiveResults([]); // Close dropdown
-      // Navigate to base collection to clear previous ?type= filters
+      setLiveResults([]); 
       navigate('/collection'); 
   };
 
-  // Close dropdowns when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (catMenuRef.current && !catMenuRef.current.contains(event.target)) {
         setShowCategories(false);
       }
       if (searchRef.current && !searchRef.current.contains(event.target)) {
-        setLiveResults([]); // Close search dropdown
+        setLiveResults([]); 
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
@@ -110,7 +107,7 @@ const Header = () => {
             <p className="text-[10px] text-gray-400 -mt-1 hidden md:block">Online Grocery Shopping Center</p>
           </Link>
 
-          {/* === SEARCH BAR CONTAINER === */}
+          {/* === SEARCH BAR === */}
           <div className="flex-1 max-w-xl mx-2 md:mx-auto relative" ref={searchRef}>
             <div className="bg-gray-100 rounded-lg flex items-center px-3 py-2 border border-gray-200 focus-within:border-blue-500 focus-within:bg-white transition">
                 <input 
@@ -122,14 +119,10 @@ const Header = () => {
                     onFocus={() => { if(search) setLiveResults(products.filter(p=>p.name.toLowerCase().includes(search.toLowerCase())).slice(0,5)) }}
                     onKeyDown={(e) => e.key === 'Enter' && handleSearchSubmit()}
                 />
-                <Search 
-                    onClick={handleSearchSubmit}
-                    className="text-gray-500 cursor-pointer shrink-0 hover:text-blue-600" 
-                    size={18} 
-                />
+                <Search onClick={handleSearchSubmit} className="text-gray-500 cursor-pointer shrink-0 hover:text-blue-600" size={18} />
             </div>
 
-            {/* === LIVE SEARCH DROPDOWN === */}
+            {/* LIVE SEARCH DROPDOWN */}
             {search && liveResults.length > 0 && (
                 <div className="absolute top-full left-0 right-0 bg-white shadow-xl rounded-b-lg border border-t-0 border-gray-100 z-[60] max-h-80 overflow-y-auto">
                     {liveResults.map((item) => (
@@ -137,8 +130,8 @@ const Header = () => {
                             key={item._id}
                             onClick={() => {
                                 navigate(`/product/${item._id}`);
-                                setLiveResults([]); // Close dropdown
-                                setSearch(""); // Optional: clear search after click
+                                setLiveResults([]); 
+                                setSearch(""); 
                             }} 
                             className="flex items-center gap-3 p-3 hover:bg-gray-50 cursor-pointer border-b border-gray-50 last:border-0"
                         >
@@ -149,10 +142,7 @@ const Header = () => {
                             </div>
                         </div>
                     ))}
-                    <div 
-                        onClick={handleSearchSubmit}
-                        className="p-2 text-center text-xs font-bold text-blue-600 cursor-pointer hover:bg-blue-50"
-                    >
+                    <div onClick={handleSearchSubmit} className="p-2 text-center text-xs font-bold text-blue-600 cursor-pointer hover:bg-blue-50">
                         View all results for "{search}"
                     </div>
                 </div>
@@ -160,7 +150,7 @@ const Header = () => {
           </div>
 
           <div className="flex items-center gap-3 md:gap-5 shrink-0">
-             {/* Account & Cart Icons (Same as before) */}
+             {/* Account & Cart Icons */}
              {token ? (
                  <div className='group relative'>
                     <Link to="/my-profile">
@@ -200,7 +190,7 @@ const Header = () => {
         </div>
       </div>
 
-      {/* Navigation Bar (Same as before) */}
+      {/* Navigation Bar */}
       <div className="border-t border-gray-100 bg-white">
         <div className="container mx-auto px-4">
             <div className="flex flex-col lg:flex-row lg:items-center gap-0 lg:gap-8 relative z-40">
@@ -240,6 +230,12 @@ const Header = () => {
                 <Link to="/" className={`hover:text-blue-500 ${isActive('/') ? 'text-blue-600' : ''}`}>HOME</Link>
                 <Link to="/collection" className={`hover:text-blue-500 ${isActive('/collection') ? 'text-blue-600' : ''}`}>SHOP</Link>
                 <Link to="/blog" className={`hover:text-blue-500 ${isActive('/blog') ? 'text-blue-600' : ''}`}>BLOG</Link>
+                
+                {/* NEW TRACK ORDER LINK */}
+                <Link to="/order-tracking" className={`hover:text-blue-500 flex items-center gap-1 ${isActive('/order-tracking') ? 'text-blue-600' : ''}`}>
+                    TRACK ORDER
+                </Link>
+
                 <Link to="/contact" className={`hover:text-blue-500 ${isActive('/contact') ? 'text-blue-600' : ''}`}>CONTACT</Link>
             </nav>
             </div>

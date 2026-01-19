@@ -1,7 +1,62 @@
 import orderModel from "../models/orderModel.js";
 import userModel from "../models/userModel.js";
 
-// Placing orders using COD Method
+// --- GUEST ORDERING (New) ---
+// Placing orders for guests without account (COD assumed)
+const placeOrderGuest = async (req, res) => {
+    try {
+        const { items, amount, address, name, phone } = req.body;
+
+        const orderData = {
+            userId: "GUEST", // Flag for guest
+            items,
+            amount,
+            address: { ...address, phone }, // Ensure phone is in address object
+            status: "Order Placed",
+            paymentMethod: "COD",
+            payment: false,
+            date: Date.now(),
+            riderId: "",
+            guestInfo: { // Specific field to track guest details easily
+                name,
+                phone
+            }
+        }
+
+        const newOrder = new orderModel(orderData);
+        await newOrder.save();
+
+        res.json({ success: true, message: "Order Placed Successfully" });
+
+    } catch (error) {
+        console.log(error);
+        res.json({ success: false, message: error.message });
+    }
+}
+
+// --- ORDER TRACKING (New) ---
+const trackOrderByPhone = async (req, res) => {
+    try {
+        const { phone } = req.body;
+        
+        // Find orders matching guestInfo phone OR address phone
+        const orders = await orderModel.find({ 
+            $or: [
+                { "guestInfo.phone": phone },
+                { "address.phone": phone } 
+            ]
+        }).sort({ date: -1 }); // Newest first
+
+        res.json({ success: true, data: orders });
+    } catch (error) {
+        console.log(error);
+        res.json({ success: false, message: error.message });
+    }
+}
+
+// --- EXISTING FUNCTIONS ---
+
+// Placing orders using COD Method (Logged in User)
 const placeOrder = async (req, res) => {
     try {
         const { userId, items, amount, address } = req.body;
@@ -14,7 +69,7 @@ const placeOrder = async (req, res) => {
             paymentMethod: "COD",
             payment: false,
             date: Date.now(),
-            riderId: "" // Initialize as empty
+            riderId: "" 
         }
 
         const newOrder = new orderModel(orderData);
@@ -54,20 +109,14 @@ const userOrders = async (req, res) => {
     }
 }
 
-// Update Order Status OR Payment Status (Used by Admin & Rider)
+// Update Order Status OR Payment Status
 const updateStatus = async (req, res) => {
     try {
         const { orderId, status, payment } = req.body;
         
         let updateData = {};
-        
-        if (status) {
-            updateData.status = status;
-        }
-
-        if (payment !== undefined) {
-            updateData.payment = payment;
-        }
+        if (status) updateData.status = status;
+        if (payment !== undefined) updateData.payment = payment;
 
         await orderModel.findByIdAndUpdate(orderId, updateData);
         res.json({ success: true, message: 'Status Updated' });
@@ -78,7 +127,7 @@ const updateStatus = async (req, res) => {
     }
 }
 
-// --- Mark Payment as Collected (For Rider) ---
+// Mark Payment as Collected (For Rider)
 const updatePaymentStatus = async (req, res) => {
     try {
         const { orderId } = req.body;
@@ -90,15 +139,11 @@ const updatePaymentStatus = async (req, res) => {
     }
 }
 
-// --- UPDATED: Get ONLY Assigned Orders for Rider ---
+// Get ONLY Assigned Orders for Rider
 const getRiderOrders = async (req, res) => {
     try {
-        // userId comes from the auth token (which is the Rider's ID)
         const { userId } = req.body; 
-        
-        // Strict Filter: Only get orders where riderId matches this rider
         const orders = await orderModel.find({ riderId: userId }).sort({ date: -1 });
-        
         res.json({ success: true, orders });
     } catch (error) {
         console.log(error);
@@ -106,14 +151,11 @@ const getRiderOrders = async (req, res) => {
     }
 }
 
-// --- NEW: Admin Assigns Rider to Order ---
+// Admin Assigns Rider to Order
 const assignRider = async (req, res) => {
     try {
         const { orderId, riderId } = req.body;
-        
-        // Update the order with the selected riderId
         await orderModel.findByIdAndUpdate(orderId, { riderId: riderId });
-        
         res.json({ success: true, message: "Rider Assigned Successfully" });
     } catch (error) {
         console.log(error);
@@ -133,7 +175,7 @@ const deleteOrder = async (req, res) => {
     }
 }
 
-// --- Dashboard Stats (For Admin) ---
+// Dashboard Stats (For Admin)
 const adminDashboard = async (req, res) => {
     try {
         const orders = await orderModel.find({});
@@ -141,7 +183,6 @@ const adminDashboard = async (req, res) => {
         const totalOrders = orders.length;
         const totalRevenue = orders.reduce((sum, order) => sum + (order.amount || 0), 0);
 
-        // Status Counts
         const pendingOrders = orders.filter(o => 
             o.status === 'Order Placed' || o.status === 'Pending' || o.status === undefined
         ).length;
@@ -152,7 +193,6 @@ const adminDashboard = async (req, res) => {
         
         const deliveredOrders = orders.filter(o => o.status === 'Delivered').length;
 
-        // Today's Stats
         const today = new Date();
         today.setHours(0, 0, 0, 0); 
         const todayTimestamp = today.getTime();
@@ -161,7 +201,6 @@ const adminDashboard = async (req, res) => {
         const todaysRevenue = todaysOrders.reduce((sum, o) => sum + (o.amount || 0), 0);
         const todaysCount = todaysOrders.length;
 
-        // Sales Chart Data (Last 7 Days)
         const salesData = [];
         for (let i = 6; i >= 0; i--) {
             const d = new Date();
@@ -182,7 +221,6 @@ const adminDashboard = async (req, res) => {
             });
         }
 
-        // Best Selling Products
         let productMap = {};
         orders.forEach(order => {
             if (order.items && Array.isArray(order.items)) {
@@ -201,7 +239,6 @@ const adminDashboard = async (req, res) => {
             .sort((a, b) => b.count - a.count)
             .slice(0, 5);
 
-        // Recent Orders
         const recentOrders = [...orders]
             .sort((a, b) => b.date - a.date)
             .slice(0, 5);
@@ -230,6 +267,8 @@ const adminDashboard = async (req, res) => {
 
 export { 
     placeOrder, 
+    placeOrderGuest,    // Exported
+    trackOrderByPhone,  // Exported
     allOrders, 
     userOrders, 
     updateStatus, 
@@ -237,5 +276,5 @@ export {
     adminDashboard,
     getRiderOrders,      
     updatePaymentStatus,
-    assignRider         // Added new export
+    assignRider         
 };

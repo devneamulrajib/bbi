@@ -5,11 +5,12 @@ const userSchema = new mongoose.Schema({
     email: { type: String, required: true, unique: true },
     password: { type: String, required: true },
     image: { type: String, default: "" }, 
-    phone: { type: String, default: "" },   // Make sure phone is here
-    address: { type: Object, default: {} },
-    role: { type: String, default: 'User' }, // <--- YOU MUST ADD THIS LINE
+    phone: { type: String, default: "" },   
+    // Address is an object, defaults handled in controller/frontend
+    address: { type: Object, default: { country: 'Bangladesh' } }, 
+    role: { type: String, default: 'User' },
     cartData: { type: Object, default: {} },
-    wishlist: { type: Array, default: [] }, // Wishlist array
+    wishlist: { type: Array, default: [] },
     orders: { type: Array, default: [] },
 }, { minimize: false })
 

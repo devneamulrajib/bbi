@@ -10,7 +10,7 @@ const Login = () => {
 
   const [currentState, setCurrentState] = useState('Login');
   const [loading, setLoading] = useState(false);
-  const [otpSent, setOtpSent] = useState(false); // Track if OTP screen should show
+  const [otpSent, setOtpSent] = useState(false); 
   
   // Inputs
   const [name, setName] = useState('');
@@ -24,7 +24,20 @@ const Login = () => {
   const [city, setCity] = useState('');
   const [state, setState] = useState('');
   const [zipcode, setZipcode] = useState('');
-  const [country, setCountry] = useState('');
+  // Country is removed from state as it's static
+
+  // Password Validation State
+  const [passwordWarning, setPasswordWarning] = useState('');
+
+  const handlePasswordChange = (e) => {
+    const val = e.target.value;
+    setPassword(val);
+    if (val.length > 0 && val.length < 8) {
+      setPasswordWarning("Password must be at least 8 characters");
+    } else {
+      setPasswordWarning("");
+    }
+  };
 
   // 1. Function to Send OTP
   const handleSendOtp = async (e) => {
@@ -45,14 +58,23 @@ const Login = () => {
       }
   }
 
-  // 2. Main Submit (Login OR Final Register)
+  // 2. Main Submit
   const onSubmitHandler = async (event) => {
     event.preventDefault();
+
+    // Block submit if password is too short
+    if (password.length < 8) {
+      toast.error("Password must be at least 8 characters");
+      return;
+    }
+
     setLoading(true);
     try {
       if (currentState === 'Sign Up') {
-        // --- FINAL REGISTER (With OTP) ---
-        const address = { street, city, state, zipcode, country };
+        // --- FINAL REGISTER ---
+        // Hardcoded Country as Bangladesh
+        const address = { street, city, state, zipcode, country: 'Bangladesh' };
+        
         const response = await axios.post(backendUrl + '/api/user/register', { 
             name, email, phone, password, address, otp 
         });
@@ -144,22 +166,25 @@ const Login = () => {
                             <input onChange={(e) => setCity(e.target.value)} value={city} type="text" placeholder="City" required className="w-1/2 px-3 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:border-[#2bbef9] text-sm" />
                             <input onChange={(e) => setZipcode(e.target.value)} value={zipcode} type="text" placeholder="Zip Code" required className="w-1/2 px-3 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:border-[#2bbef9] text-sm" />
                         </div>
+                        
+                        {/* Modified: State only, Country is hidden */}
                         <div className="flex gap-2">
-                            <input onChange={(e) => setState(e.target.value)} value={state} type="text" placeholder="State" required className="w-1/2 px-3 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:border-[#2bbef9] text-sm" />
-                            <input onChange={(e) => setCountry(e.target.value)} value={country} type="text" placeholder="Country" required className="w-1/2 px-3 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:border-[#2bbef9] text-sm" />
+                            <input onChange={(e) => setState(e.target.value)} value={state} type="text" placeholder="State" required className="w-full px-3 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:border-[#2bbef9] text-sm" />
                         </div>
 
+                        {/* Password with Warning */}
                         <div className="relative">
                             <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-                            <input onChange={(e) => setPassword(e.target.value)} value={password} type="password" placeholder="Password" required className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:border-[#2bbef9]" />
+                            <input onChange={handlePasswordChange} value={password} type="password" placeholder="Password (Min 8 chars)" required className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:border-[#2bbef9]" />
                         </div>
+                        {passwordWarning && <p className="text-red-500 text-xs ml-1">{passwordWarning}</p>}
 
                         <button disabled={loading} className="bg-[#233a95] text-white font-bold py-3 rounded mt-2 hover:bg-blue-800 transition flex items-center justify-center gap-2">
                             {loading ? <Loader2 className="animate-spin"/> : "VERIFY & SIGN UP"}
                         </button>
                     </>
                 ) : (
-                    // STEP 2: OTP
+                    // STEP 2: OTP (Unchanged)
                     <div className='animate-fade-in'>
                         <div className="bg-blue-50 border border-blue-200 text-blue-800 px-4 py-3 rounded mb-4 text-sm">
                             We have sent a verification code to <b>{email}</b>.
@@ -176,7 +201,7 @@ const Login = () => {
                 )}
               </>
             ) : (
-              // --- LOGIN FORM (Unchanged) ---
+              // --- LOGIN FORM ---
               <>
                 <div className="relative">
                     <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
@@ -200,7 +225,7 @@ const Login = () => {
             <button 
               onClick={() => {
                   setCurrentState(currentState === 'Login' ? 'Sign Up' : 'Login');
-                  setOtpSent(false); // Reset OTP state
+                  setOtpSent(false); 
               }}
               className="ml-2 font-bold text-[#233a95] hover:underline"
             >

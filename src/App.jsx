@@ -4,7 +4,7 @@ import { Routes, Route, Outlet, useLocation } from 'react-router-dom';
 // Import Components
 import Header from './Header';
 import Footer from './components/Footer'; 
-import CartSidebar from './components/CartSidebar'; // <--- 1. IMPORT ADDED HERE
+import CartSidebar from './components/CartSidebar'; 
 
 // Import Pages
 import Home from './Home';
@@ -19,6 +19,7 @@ import LegalPage from './pages/LegalPage';
 import MyProfile from './pages/MyProfile';
 import Cart from './pages/Cart';
 import PlaceOrder from './pages/PlaceOrder';
+import OrderTracking from './pages/OrderTracking'; // <--- IMPORT ADDED
 
 // --- LAYOUT COMPONENT ---
 const Layout = () => {
@@ -31,7 +32,7 @@ const Layout = () => {
 
   return (
     <>
-      <CartSidebar /> {/* <--- 2. COMPONENT ADDED HERE (Global Cart Drawer) */}
+      <CartSidebar /> 
       
       <Header />
       <div className="min-h-screen">
@@ -60,6 +61,10 @@ function App() {
           <Route path="/my-profile" element={<MyProfile />} />
           <Route path='/cart' element={<Cart />} />
           <Route path='/place-order' element={<PlaceOrder />} />
+          
+          {/* New Tracking Route */}
+          <Route path='/order-tracking' element={<OrderTracking />} />
+
           {/* Dynamic Route for Privacy Policy, Terms, Cookies */}
           <Route path="page/:slug" element={<LegalPage />} /> 
         </Route>
