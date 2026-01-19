@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import axios from 'axios'
-import { backendUrl } from '../App'
+import { backendUrl, currency } from '../App' // Ensure currency is imported or define it
 import { toast } from 'react-toastify'
 import { assets } from '../assets/assets' 
 import jsPDF from 'jspdf'
@@ -33,17 +33,13 @@ const Orders = ({ token }) => {
   const fetchAllOrders = async () => {
     if (!token) return
     try {
-      const response = await axios.post(backendUrl + '/api/user/list', {}, { headers: { token } }) // Note: Route might differ based on your route file, assumed /api/user/list based on context or /api/order/list
-      // Based on previous context, usually it is /api/order/list, but if you moved it to userRoute, check path. 
-      // I will use your previous file's path:
-      // If your backend/routes/userRoute.js has 'userRouter.get('/list', ... allUsers)', that's users.
-      // Orders usually reside in orderRoute. Assuming standard order route:
-      const orderRes = await axios.post(backendUrl + '/api/order/list', {}, { headers: { token } });
+      // Matches backend/routes/orderRoute.js -> router.post('/list')
+      const response = await axios.post(backendUrl + '/api/order/list', {}, { headers: { token } });
       
-      if (orderRes.data.success) {
-        setOrders(orderRes.data.orders)
+      if (response.data.success) {
+        setOrders(response.data.orders)
       } else {
-        toast.error(orderRes.data.message)
+        toast.error(response.data.message)
       }
     } catch (error) {
       toast.error(error.message)
@@ -52,14 +48,14 @@ const Orders = ({ token }) => {
     }
   }
 
-  // --- FETCH RIDERS (New) ---
+  // --- FETCH RIDERS ---
   const fetchRiders = async () => {
     try {
-      // Fetching staff from the user/staff/list route we created
-      const response = await axios.get(backendUrl + '/api/user/staff/list', { headers: { token } })
+      // Matches backend/routes/userRoute.js -> router.get('/list')
+      const response = await axios.get(backendUrl + '/api/user/list', { headers: { token } })
       if (response.data.success) {
-        // Filter only staff with role 'Deliveryman'
-        const deliveryMen = response.data.staff.filter(member => member.role === 'Deliveryman')
+        // Filter only users with role 'Deliveryman'
+        const deliveryMen = response.data.users.filter(member => member.role === 'Deliveryman')
         setRiders(deliveryMen)
       }
     } catch (error) {
@@ -67,11 +63,11 @@ const Orders = ({ token }) => {
     }
   }
 
-  // --- ASSIGN RIDER HANDLER (New) ---
+  // --- ASSIGN RIDER HANDLER ---
   const assignRiderHandler = async (orderId, riderId) => {
-    if (!riderId) return;
+    // Matches backend/routes/orderRoute.js -> router.post('/assign')
     try {
-      const response = await axios.post(backendUrl + '/api/user/order/assign', { orderId, riderId }, { headers: { token } })
+      const response = await axios.post(backendUrl + '/api/order/assign', { orderId, riderId }, { headers: { token } })
       if (response.data.success) {
         toast.success(response.data.message)
         fetchAllOrders() // Refresh orders to show assigned rider
@@ -90,6 +86,7 @@ const Orders = ({ token }) => {
       if(status) payload.status = status;
       if(payment !== null) payload.payment = payment;
 
+      // Matches backend/routes/orderRoute.js -> router.post('/status')
       const response = await axios.post(backendUrl + '/api/order/status', payload, { headers: { token } })
       if (response.data.success) {
         await fetchAllOrders() 
@@ -168,7 +165,8 @@ const Orders = ({ token }) => {
   const generateInvoice = (order) => {
     try {
         const doc = new jsPDF();
-        const currency = 'Tk '; 
+        // Use provided currency or default to Tk
+        const curr = currency || 'Tk '; 
 
         try {
             if (assets.logo) {
@@ -226,8 +224,8 @@ const Orders = ({ token }) => {
                     item.name,
                     item.size || '-',
                     item.quantity,
-                    `${currency}${item.price}`,
-                    `${currency}${itemTotal}`,
+                    `${curr}${item.price}`,
+                    `${curr}${itemTotal}`,
                 ]);
             });
         }
@@ -253,17 +251,17 @@ const Orders = ({ token }) => {
         let currentY = finalY;
 
         doc.text("Subtotal:", xLabel, currentY);
-        doc.text(`${currency}${subtotal}`, xValue, currentY, { align: 'right' });
+        doc.text(`${curr}${subtotal}`, xValue, currentY, { align: 'right' });
         currentY += 6;
 
         doc.text("Delivery Charge:", xLabel, currentY);
-        doc.text(`${currency}${deliveryCharge}`, xValue, currentY, { align: 'right' });
+        doc.text(`${curr}${deliveryCharge}`, xValue, currentY, { align: 'right' });
         currentY += 6;
 
         if (order.coupon || discount > 0) {
             doc.setTextColor(0, 100, 0); 
             doc.text(`Discount (${order.coupon || 'Coupon'}):`, xLabel, currentY);
-            doc.text(`-${currency}${discount}`, xValue, currentY, { align: 'right' });
+            doc.text(`-${curr}${discount}`, xValue, currentY, { align: 'right' });
             doc.setTextColor(0);
             currentY += 6;
         }
@@ -271,7 +269,7 @@ const Orders = ({ token }) => {
         doc.setFontSize(12);
         doc.setFont("helvetica", "bold");
         doc.text("Grand Total:", xLabel, currentY + 2);
-        doc.text(`${currency}${order.amount}`, xValue, currentY + 2, { align: 'right' });
+        doc.text(`${curr}${order.amount}`, xValue, currentY + 2, { align: 'right' });
 
         doc.save(`invoice_${order._id.slice(-6)}.pdf`);
     
@@ -288,10 +286,12 @@ const Orders = ({ token }) => {
         filteredOrders.forEach(o => {
             const date = o.date ? new Date(o.date).toLocaleDateString() : 'N/A';
             const name = o.address ? `${o.address.firstName} ${o.address.lastName}` : 'Guest';
-            // Need to find rider name from riders array if only ID is in order, 
-            // but usually backend populates it or we check riders state. 
-            // For now simple CSV.
-            csvContent += `${o._id},${date},${name},${o.amount},${o.status},${o.paymentMethod},${o.rider || 'Unassigned'}\n`;
+            
+            // Find Rider Name
+            const assignedRider = riders.find(r => r._id === o.riderId);
+            const riderName = assignedRider ? assignedRider.name : 'Unassigned';
+
+            csvContent += `${o._id},${date},${name},${o.amount},${o.status},${o.paymentMethod},${riderName}\n`;
         });
         const encodedUri = encodeURI(csvContent);
         const link = document.createElement("a");
@@ -307,7 +307,7 @@ const Orders = ({ token }) => {
   useEffect(() => { 
     if(token){
       fetchAllOrders();
-      fetchRiders(); // Fetch riders when component loads
+      fetchRiders(); 
     }
   }, [token])
 
@@ -332,29 +332,29 @@ const Orders = ({ token }) => {
 
             {/* Controls */}
             <div className='flex flex-wrap gap-2 text-sm'>
-                <select className='border px-3 py-2 rounded outline-none' value={statusFilter} onChange={(e)=>setStatusFilter(e.target.value)}>
+                <select className='border px-3 py-2 rounded outline-none cursor-pointer' value={statusFilter} onChange={(e)=>setStatusFilter(e.target.value)}>
                     <option value="All">Status: All</option>
                     <option value="Order Placed">Order Placed</option>
-                    <option value="Processing">Processing</option>
+                    <option value="Packing">Packing</option>
                     <option value="Shipped">Shipped</option>
                     <option value="Out for delivery">Out For Delivery</option>
                     <option value="Delivered">Delivered</option>
                 </select>
 
-                <select className='border px-3 py-2 rounded outline-none' value={limitFilter} onChange={(e)=>setLimitFilter(e.target.value)}>
+                <select className='border px-3 py-2 rounded outline-none cursor-pointer' value={limitFilter} onChange={(e)=>setLimitFilter(e.target.value)}>
                     <option value="All">Time: All</option>
                     <option value="1">Last 24h</option>
                     <option value="7">Last 7d</option>
                     <option value="30">Last 30d</option>
                 </select>
 
-                <select className='border px-3 py-2 rounded outline-none' value={methodFilter} onChange={(e)=>setMethodFilter(e.target.value)}>
+                <select className='border px-3 py-2 rounded outline-none cursor-pointer' value={methodFilter} onChange={(e)=>setMethodFilter(e.target.value)}>
                     <option value="All">Method: All</option>
                     <option value="COD">COD</option>
                     <option value="Stripe">Stripe</option>
                 </select>
 
-                <button onClick={downloadReport} className='bg-green-600 text-white px-3 py-2 rounded hover:bg-green-700 flex items-center gap-1'>
+                <button onClick={downloadReport} className='bg-green-600 text-white px-3 py-2 rounded hover:bg-green-700 flex items-center gap-1 cursor-pointer'>
                     <Download size={16} /> Export
                 </button>
             </div>
@@ -364,13 +364,13 @@ const Orders = ({ token }) => {
         <div className='flex flex-wrap gap-4 items-center border-t pt-4 text-sm'>
             <div className='flex items-center gap-2'>
                 <span className='text-gray-500'>From:</span>
-                <input type="date" className='border px-2 py-1 rounded' value={startDate} onChange={(e)=>setStartDate(e.target.value)} />
+                <input type="date" className='border px-2 py-1 rounded cursor-pointer' value={startDate} onChange={(e)=>setStartDate(e.target.value)} />
             </div>
             <div className='flex items-center gap-2'>
                 <span className='text-gray-500'>To:</span>
-                <input type="date" className='border px-2 py-1 rounded' value={endDate} onChange={(e)=>setEndDate(e.target.value)} />
+                <input type="date" className='border px-2 py-1 rounded cursor-pointer' value={endDate} onChange={(e)=>setEndDate(e.target.value)} />
             </div>
-            <button onClick={resetFilters} className='text-gray-500 hover:text-red-500 flex items-center gap-1 ml-auto'>
+            <button onClick={resetFilters} className='text-gray-500 hover:text-red-500 flex items-center gap-1 ml-auto cursor-pointer'>
                 <RefreshCcw size={14} /> Reset
             </button>
         </div>
@@ -415,7 +415,7 @@ const Orders = ({ token }) => {
                                     </button>
                                 </div>
                             </td>
-                            <td className='p-4 font-bold'>${order.amount}</td>
+                            <td className='p-4 font-bold'>Tk {order.amount}</td>
                             
                             {/* --- ASSIGN RIDER COLUMN --- */}
                             <td className='p-4'>
@@ -423,8 +423,8 @@ const Orders = ({ token }) => {
                                   <Bike size={16} className="text-gray-400"/>
                                   <select 
                                       onChange={(e) => assignRiderHandler(order._id, e.target.value)} 
-                                      value={order.rider || ""} 
-                                      className='border rounded text-xs py-1 px-1 focus:outline-none bg-white max-w-[120px]'
+                                      value={order.riderId || ""} 
+                                      className='border rounded text-xs py-1 px-1 focus:outline-none bg-white max-w-[120px] cursor-pointer'
                                   >
                                       <option value="">Select Rider</option>
                                       {riders.map((r) => (
@@ -449,25 +449,25 @@ const Orders = ({ token }) => {
                                     <select 
                                         onChange={(e) => statusHandler(order._id, e.target.value)} 
                                         value={order.status} 
-                                        className='border rounded text-xs py-1 px-1 focus:outline-none bg-white max-w-[100px]'
+                                        className='border rounded text-xs py-1 px-1 focus:outline-none bg-white max-w-[100px] cursor-pointer'
                                     >
                                         <option value="Order Placed">Placed</option>
-                                        <option value="Processing">Processing</option>
+                                        <option value="Packing">Packing</option>
                                         <option value="Shipped">Shipped</option>
                                         <option value="Out for delivery">Out for delivery</option>
                                         <option value="Delivered">Delivered</option>
                                         <option value="Cancelled">Cancelled</option>
                                     </select>
-                                    <button onClick={()=>deleteOrderHandler(order._id)} className='text-red-400 hover:text-red-600'>
+                                    <button onClick={()=>deleteOrderHandler(order._id)} className='text-red-400 hover:text-red-600 cursor-pointer'>
                                         <Trash2 size={16} />
                                     </button>
                                 </div>
                             </td>
                             <td className='p-4 flex gap-2 justify-center'>
-                                <button onClick={() => { setSelectedOrder(order); setShowModal(true); }} className='text-blue-500 hover:bg-blue-50 p-1.5 rounded'>
+                                <button onClick={() => { setSelectedOrder(order); setShowModal(true); }} className='text-blue-500 hover:bg-blue-50 p-1.5 rounded cursor-pointer'>
                                     <Eye size={18} />
                                 </button>
-                                <button onClick={() => generateInvoice(order)} className='text-green-600 hover:bg-green-50 p-1.5 rounded'>
+                                <button onClick={() => generateInvoice(order)} className='text-green-600 hover:bg-green-50 p-1.5 rounded cursor-pointer'>
                                     <Printer size={18} />
                                 </button>
                             </td>
@@ -523,10 +523,11 @@ const Orders = ({ token }) => {
                             <p>Status: <span className='font-semibold text-blue-600'>{selectedOrder.status}</span></p>
                             
                             {/* Rider Info in Modal */}
-                            {selectedOrder.rider && (
+                            {selectedOrder.riderId && (
                                 <p className='mt-2 bg-blue-50 p-1 rounded'>
-                                    <span className='font-semibold text-blue-700'>Assigned Rider ID:</span> 
-                                    <br/>{selectedOrder.rider}
+                                    <span className='font-semibold text-blue-700'>Assigned Rider:</span> 
+                                    <br/>
+                                    {riders.find(r => r._id === selectedOrder.riderId)?.name || 'Unknown'}
                                 </p>
                             )}
 
@@ -550,7 +551,7 @@ const Orders = ({ token }) => {
                                           <span className='text-xs text-gray-500'>Size: {item.size}</span>
                                       </td>
                                       <td className='p-2 text-center'>x{item.quantity}</td>
-                                      <td className='p-2 text-right font-medium'>${item.price * item.quantity}</td>
+                                      <td className='p-2 text-right font-medium'>Tk {item.price * item.quantity}</td>
                                   </tr>
                               ))}
                           </tbody>
@@ -565,15 +566,15 @@ const Orders = ({ token }) => {
                                       <>
                                         <div className='flex justify-between py-1 border-b'>
                                             <span className='text-gray-600'>Subtotal:</span>
-                                            <span>${subtotal}</span>
+                                            <span>Tk {subtotal}</span>
                                         </div>
                                         <div className='flex justify-between py-1 border-b'>
                                             <span className='text-gray-600'>Delivery:</span>
-                                            <span>${delivery}</span>
+                                            <span>Tk {delivery}</span>
                                         </div>
                                         <div className='flex justify-between py-2 text-lg font-bold text-gray-800'>
                                             <span>Total:</span>
-                                            <span>${selectedOrder.amount}</span>
+                                            <span>Tk {selectedOrder.amount}</span>
                                         </div>
                                       </>
                                   )

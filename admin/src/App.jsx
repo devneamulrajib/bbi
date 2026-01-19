@@ -20,6 +20,7 @@ import Reviews from './pages/Reviews'
 import Profile from './pages/Profile';
 
 export const backendUrl = import.meta.env.VITE_BACKEND_URL
+export const currency = 'Tk ' // <--- This fixes your error
 
 const App = () => {
 
@@ -41,7 +42,6 @@ const App = () => {
             <Sidebar />
             <div className='w-[70%] mx-auto ml-[max(5vw,25px)] my-8 text-gray-600 text-base'>
               <Routes>
-                {/* Dashboard is the default Home Route */}
                 <Route path='/' element={<Dashboard token={token} url={backendUrl} />} /> 
                 <Route path='/dashboard' element={<Dashboard token={token} url={backendUrl} />} />
                 
@@ -55,10 +55,7 @@ const App = () => {
                 <Route path='/users' element={<Users token={token} />} />
                 <Route path='/profile' element={<Profile token={token} />} />
                 <Route path='/reviews' element={<Reviews token={token} />} />
-                
-                {/* FIXED: Changed path to /staff to match your Sidebar link */}
                 <Route path='/staff' element={<ManageUser token={token} />} />
-                
                 <Route path='/category' element={<Category token={token} />} />
               </Routes>
             </div>
