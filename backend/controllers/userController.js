@@ -1,10 +1,10 @@
 import userModel from "../models/userModel.js";
-import otpModel from "../models/otpModel.js"; // OTP Model
-import { sendOtpEmail } from "../config/emailConfig.js"; // Brevo Email Helper
+import otpModel from "../models/otpModel.js"; 
+import { sendOtpEmail } from "../config/emailConfig.js"; 
 import validator from "validator";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
-import { v2 as cloudinary } from 'cloudinary'; // Added for Profile Image Upload
+import { v2 as cloudinary } from 'cloudinary'; 
 
 // Create JWT Token
 const createToken = (id) => {
@@ -15,26 +15,21 @@ const createToken = (id) => {
 const sendOtp = async (req, res) => {
     try {
         const { email } = req.body;
-
-        // Check if user already exists
         const exists = await userModel.findOne({ email });
         if (exists) return res.json({ success: false, message: "User already exists" });
 
-        // Generate 6-digit OTP
         const otp = Math.floor(100000 + Math.random() * 900000).toString();
 
-        // Save to DB (upsert, auto-expires 5 mins)
         await otpModel.findOneAndUpdate(
             { email },
             { otp, createdAt: Date.now() },
             { upsert: true, new: true }
         );
 
-        // Send Email
         const isSent = await sendOtpEmail(email, otp);
 
         if (!isSent) {
-            await otpModel.deleteOne({ email }); // Cleanup failed attempt
+            await otpModel.deleteOne({ email }); 
             return res.json({ success: false, message: "Failed to send OTP email. Please check the email address." });
         }
 
@@ -46,14 +41,11 @@ const sendOtp = async (req, res) => {
     }
 };
 
-// --- 2. USER REGISTRATION (UPDATED: Allows Admin to skip OTP) ---
+// --- 2. USER REGISTRATION ---
 const registerUser = async (req, res) => {
     try {
-        // Added 'role' to destructuring
         const { name, email, phone, password, address, otp, role } = req.body;
 
-        // 1. Verify OTP (ONLY IF NO ROLE IS PROVIDED)
-        // If a role is provided (like 'Deliveryman'), we assume it's an Admin creating it, so we skip OTP.
         if (!role) { 
             const otpRecord = await otpModel.findOne({ email });
             if (!otpRecord || otpRecord.otp !== otp) {
@@ -61,13 +53,11 @@ const registerUser = async (req, res) => {
             }
         }
 
-        // 2. Standard Validation
         const exists = await userModel.findOne({ email });
         if (exists) return res.json({ success: false, message: "User already exists" });
         if (!validator.isEmail(email)) return res.json({ success: false, message: "Invalid email" });
         if (password.length < 8) return res.json({ success: false, message: "Weak password" });
 
-        // 3. Create User
         const salt = await bcrypt.genSalt(10);
         const hashedPassword = await bcrypt.hash(password, salt);
 
@@ -77,12 +67,11 @@ const registerUser = async (req, res) => {
             phone,
             password: hashedPassword,
             address: address || {},
-            role: role || 'User' // Save the role (Deliveryman/Admin/User)
+            role: role || 'User' 
         });
 
         const user = await newUser.save();
 
-        // 4. Delete Used OTP (Only if OTP was used)
         if (!role) {
             await otpModel.deleteOne({ email });
         }
@@ -97,7 +86,7 @@ const registerUser = async (req, res) => {
     }
 };
 
-// --- 3. USER LOGIN (UPDATED: Returns Role) ---
+// --- 3. USER LOGIN (UPDATED: Returns Name & Role) ---
 const loginUser = async (req, res) => {
     try {
         const { email, password } = req.body;
@@ -109,8 +98,8 @@ const loginUser = async (req, res) => {
 
         const token = createToken(user._id);
         
-        // Return success, token, AND ROLE (Crucial for Rider App)
-        return res.json({ success: true, token, role: user.role });
+        // UPDATED: Sending 'name' along with token and role
+        return res.json({ success: true, token, role: user.role, name: user.name });
 
     } catch (error) {
         console.error("Login Error:", error);
@@ -118,7 +107,7 @@ const loginUser = async (req, res) => {
     }
 };
 
-// --- 4. GET PROFILE (Frontend User) ---
+// --- 4. GET PROFILE ---
 const getUserProfile = async (req, res) => {
     try {
         const { userId } = req.body;
@@ -130,7 +119,7 @@ const getUserProfile = async (req, res) => {
     }
 };
 
-// --- 5. UPDATE PROFILE (Frontend User) ---
+// --- 5. UPDATE PROFILE ---
 const updateProfile = async (req, res) => {
     try {
         const { userId, name, phone, address, password } = req.body;
@@ -188,7 +177,7 @@ const adminLogin = async (req, res) => {
     }
 };
 
-// --- 8. ADMIN: LIST / DELETE / GET SINGLE / MANAGE USERS ---
+// --- 8. ADMIN FEATURES ---
 const allUsers = async (req, res) => {
     try {
         const users = await userModel.find({}).select("-password");
@@ -227,7 +216,6 @@ const adminManageUser = async (req, res) => {
         const address = { street, city, state, zipcode, country };
 
         if (id) {
-            // Update existing user
             const updateData = { name, email, phone, address };
             if (password && password.length > 0) {
                 if (password.length < 8) return res.json({ success: false, message: "Password too short" });
@@ -237,7 +225,6 @@ const adminManageUser = async (req, res) => {
             await userModel.findByIdAndUpdate(id, updateData);
             return res.json({ success: true, message: "User updated successfully" });
         } else {
-            // Create new user
             const exists = await userModel.findOne({ email });
             if (exists) return res.json({ success: false, message: "User already exists" });
             if (!validator.isEmail(email)) return res.json({ success: false, message: "Invalid email" });
@@ -257,12 +244,10 @@ const adminManageUser = async (req, res) => {
     }
 };
 
-// --- 9. ADMIN PROFILE (NEW) ---
-
-// Get Admin Profile Data
+// --- 9. ADMIN PROFILE ---
 const getAdminProfile = async (req, res) => {
     try {
-        const { userId } = req.body; // Provided by auth middleware
+        const { userId } = req.body; 
         const user = await userModel.findById(userId).select('-password');
         
         if (!user) {
@@ -275,7 +260,6 @@ const getAdminProfile = async (req, res) => {
     }
 }
 
-// Update Admin Profile (With Image Upload)
 const updateAdminProfile = async (req, res) => {
     try {
         const { userId, name, email, phone, role } = req.body;
@@ -310,6 +294,6 @@ export {
     deleteUser,
     getSingleUser,
     adminManageUser,
-    getAdminProfile,   // Export New Function
-    updateAdminProfile // Export New Function
+    getAdminProfile,   
+    updateAdminProfile 
 };

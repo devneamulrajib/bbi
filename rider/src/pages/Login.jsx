@@ -13,7 +13,6 @@ const Login = ({ setToken }) => {
   const onSubmitHandler = async (e) => {
     e.preventDefault();
     try {
-      // CHANGED: Using the standard '/api/user/login' endpoint
       const response = await axios.post(backendUrl + '/api/user/login', { email, password });
       
       if (response.data.success) {
@@ -21,7 +20,11 @@ const Login = ({ setToken }) => {
         if(response.data.role === 'Deliveryman') {
             toast.success("Welcome Rider!");
             setToken(response.data.token);
+            
+            // Save Token and Name to LocalStorage
             localStorage.setItem('token', response.data.token);
+            localStorage.setItem('riderName', response.data.name); // SAVING NAME HERE
+
             navigate('/dashboard');
         } else {
             toast.error("Access Denied. You are not a registered Rider.");

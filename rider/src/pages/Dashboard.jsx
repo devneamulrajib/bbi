@@ -12,6 +12,9 @@ const Dashboard = ({ token, setToken }) => {
     const [loading, setLoading] = useState(true)
     const [activeTab, setActiveTab] = useState('active') // 'active', 'history', 'profile'
     const [expandedOrderId, setExpandedOrderId] = useState(null)
+    // ADDED: State to hold rider name
+    const [riderName, setRiderName] = useState(localStorage.getItem('riderName') || 'Rider')
+    
     const backendUrl = import.meta.env.VITE_BACKEND_URL
 
     // Stats Calculations
@@ -24,7 +27,6 @@ const Dashboard = ({ token, setToken }) => {
         try {
             const response = await axios.post(backendUrl + '/api/order/rider/list', {}, { headers: { token } });
             if (response.data.success) {
-                // Sort: Newest first
                 setOrders(response.data.orders.reverse());
             } else {
                 toast.error(response.data.message);
@@ -37,10 +39,9 @@ const Dashboard = ({ token, setToken }) => {
         }
     }
 
-    // Update Status (e.g., Mark Delivered)
+    // Update Status
     const updateStatus = async (orderId, newStatus) => {
         try {
-            // Updated Endpoint for Rider
             const res = await axios.post(backendUrl + '/api/order/rider/status', { orderId, status: newStatus }, { headers: { token } });
             if(res.data.success) {
                 toast.success(`Status updated to ${newStatus}`);
@@ -107,7 +108,6 @@ const Dashboard = ({ token, setToken }) => {
                             <p>{order.address.street}, {order.address.city}, {order.address.zipcode}</p>
                         </div>
                     </div>
-                    {/* Action Buttons: Call & Map */}
                     <div className='flex gap-2'>
                         <a href={`tel:${order.address.phone}`} className='p-2 bg-green-50 rounded-full text-green-600 border border-green-200 hover:bg-green-100'>
                             <Phone size={18} />
@@ -147,10 +147,9 @@ const Dashboard = ({ token, setToken }) => {
                 )}
             </div>
 
-            {/* Footer Actions (Only for Active Orders) */}
+            {/* Footer Actions */}
             {!isHistory && (
                 <div className='p-4 pt-0 grid grid-cols-2 gap-3'>
-                    {/* Payment Button */}
                     <button 
                         disabled={order.payment}
                         onClick={() => markPaid(order._id)}
@@ -164,7 +163,6 @@ const Dashboard = ({ token, setToken }) => {
                         {order.payment ? 'Paid' : 'Collect Cash'}
                     </button>
 
-                    {/* Status Button */}
                     {order.status !== 'Delivered' ? (
                         <button 
                             onClick={() => updateStatus(order._id, 'Delivered')}
@@ -191,7 +189,8 @@ const Dashboard = ({ token, setToken }) => {
             <div className='bg-black text-white p-6 rounded-b-[2rem] shadow-lg sticky top-0 z-10'>
                 <div className='flex justify-between items-center mb-6'>
                     <div>
-                        <h1 className='text-2xl font-bold'>Hello, Rider 👋</h1>
+                        {/* CHANGED: Uses riderName variable */}
+                        <h1 className='text-2xl font-bold'>Hello, {riderName} 👋</h1>
                         <p className='text-gray-400 text-sm'>Let's deliver some happiness!</p>
                     </div>
                     <button onClick={fetchOrders} className='p-2 bg-gray-800 rounded-full hover:bg-gray-700 transition'>
@@ -199,7 +198,6 @@ const Dashboard = ({ token, setToken }) => {
                     </button>
                 </div>
 
-                {/* Quick Stats */}
                 <div className='grid grid-cols-2 gap-4'>
                     <div className='bg-gray-800 p-3 rounded-xl'>
                         <p className='text-gray-400 text-xs uppercase tracking-wider'>Today's Earnings</p>
@@ -253,7 +251,7 @@ const Dashboard = ({ token, setToken }) => {
                             <div className='w-20 h-20 bg-gray-200 rounded-full mx-auto mb-3 flex items-center justify-center'>
                                 <User size={40} className='text-gray-500' />
                             </div>
-                            <h2 className='text-xl font-bold'>Rider Account</h2>
+                            <h2 className='text-xl font-bold'>{riderName}</h2>
                             <p className='text-gray-500'>Delivery Partner</p>
                         </div>
                         
@@ -266,7 +264,11 @@ const Dashboard = ({ token, setToken }) => {
                             </div>
                             
                             <button 
-                                onClick={() => { setToken(''); localStorage.removeItem('token'); }}
+                                onClick={() => { 
+                                    setToken(''); 
+                                    localStorage.removeItem('token'); 
+                                    localStorage.removeItem('riderName'); // Clear name on logout
+                                }}
                                 className='w-full py-3 bg-red-50 text-red-600 font-bold rounded-lg flex items-center justify-center gap-2 hover:bg-red-100 transition'
                             >
                                 <LogOut size={18} /> Logout

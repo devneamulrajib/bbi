@@ -5,14 +5,14 @@ const orderSchema = new mongoose.Schema({
     items: { type: Array, required: true },
     amount: { type: Number, required: true },
     address: { type: Object, required: true },
-    status: { type: String, default: 'Order Placed' },
+    status: { type: String, default: "Order Placed" },
     paymentMethod: { type: String, required: true },
     payment: { type: Boolean, default: false },
     date: { type: Number, required: true },
-    // NEW FIELD:
-    rider: { type: mongoose.Schema.Types.ObjectId, ref: 'staff', default: null }, 
-    deliveryCharge: { type: Number, default: 0 } 
+    // --- ADD THIS LINE ---
+    riderId: { type: String, default: "" } 
+    // --------------------
 })
 
-const orderModel = mongoose.models.order || mongoose.model('order', orderSchema)
+const orderModel = mongoose.models.order || mongoose.model("order", orderSchema);
 export default orderModel;

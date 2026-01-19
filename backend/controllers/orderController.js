@@ -13,7 +13,8 @@ const placeOrder = async (req, res) => {
             amount,
             paymentMethod: "COD",
             payment: false,
-            date: Date.now()
+            date: Date.now(),
+            riderId: "" // Initialize as empty
         }
 
         const newOrder = new orderModel(orderData);
@@ -77,7 +78,7 @@ const updateStatus = async (req, res) => {
     }
 }
 
-// --- NEW FUNCTION: Mark Payment as Collected (For Rider) ---
+// --- Mark Payment as Collected (For Rider) ---
 const updatePaymentStatus = async (req, res) => {
     try {
         const { orderId } = req.body;
@@ -89,17 +90,31 @@ const updatePaymentStatus = async (req, res) => {
     }
 }
 
-// --- NEW FUNCTION: Get Orders for Rider Dashboard ---
+// --- UPDATED: Get ONLY Assigned Orders for Rider ---
 const getRiderOrders = async (req, res) => {
     try {
-        // NOTE: In a real app, you would filter by the Rider's ID: 
-        // const { userId } = req.body; 
-        // const orders = await orderModel.find({ riderId: userId });
+        // userId comes from the auth token (which is the Rider's ID)
+        const { userId } = req.body; 
         
-        // FOR NOW: We return ALL orders so you can see data in your Rider App immediately.
-        const orders = await orderModel.find({}).sort({ date: -1 });
+        // Strict Filter: Only get orders where riderId matches this rider
+        const orders = await orderModel.find({ riderId: userId }).sort({ date: -1 });
         
         res.json({ success: true, orders });
+    } catch (error) {
+        console.log(error);
+        res.json({ success: false, message: error.message });
+    }
+}
+
+// --- NEW: Admin Assigns Rider to Order ---
+const assignRider = async (req, res) => {
+    try {
+        const { orderId, riderId } = req.body;
+        
+        // Update the order with the selected riderId
+        await orderModel.findByIdAndUpdate(orderId, { riderId: riderId });
+        
+        res.json({ success: true, message: "Rider Assigned Successfully" });
     } catch (error) {
         console.log(error);
         res.json({ success: false, message: error.message });
@@ -220,6 +235,7 @@ export {
     updateStatus, 
     deleteOrder, 
     adminDashboard,
-    getRiderOrders,      // Added
-    updatePaymentStatus  // Added
+    getRiderOrders,      
+    updatePaymentStatus,
+    assignRider         // Added new export
 };

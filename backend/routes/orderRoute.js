@@ -7,7 +7,8 @@ import {
     deleteOrder, 
     adminDashboard, 
     getRiderOrders, 
-    updatePaymentStatus 
+    updatePaymentStatus,
+    assignRider         // Added this import
 } from '../controllers/orderController.js';
 import adminAuth from '../middleware/adminAuth.js';
 import authUser from '../middleware/auth.js';
@@ -19,14 +20,13 @@ orderRouter.get('/dashboard', adminAuth, adminDashboard);
 orderRouter.post('/list', adminAuth, allOrders);
 orderRouter.post('/status', adminAuth, updateStatus); // Admin Only
 orderRouter.post('/delete', adminAuth, deleteOrder);
+orderRouter.post('/assign', adminAuth, assignRider); // New Route for assigning riders
 
 // --- RIDER FEATURES ---
 // 1. Get Assigned Orders
 orderRouter.post('/rider/list', authUser, getRiderOrders);
 
 // 2. Update Status (Rider Version)
-// We use a separate route '/rider/status' to allow Riders (authUser) to update status
-// instead of Admins (adminAuth)
 orderRouter.post('/rider/status', authUser, updateStatus);
 
 // 3. Collect Payment
