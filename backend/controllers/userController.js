@@ -33,7 +33,6 @@ const sendOtp = async (req, res) => {
         // Send Email
         const isSent = await sendOtpEmail(email, otp);
 
-        // FIX: If email fails, delete the OTP and return Error
         if (!isSent) {
             await otpModel.deleteOne({ email }); // Cleanup failed attempt
             return res.json({ success: false, message: "Failed to send OTP email. Please check the email address." });
@@ -47,15 +46,19 @@ const sendOtp = async (req, res) => {
     }
 };
 
-// --- 2. USER REGISTRATION (VERIFY OTP) ---
+// --- 2. USER REGISTRATION (UPDATED: Allows Admin to skip OTP) ---
 const registerUser = async (req, res) => {
     try {
-        const { name, email, phone, password, address, otp } = req.body;
+        // Added 'role' to destructuring
+        const { name, email, phone, password, address, otp, role } = req.body;
 
-        // 1. Verify OTP
-        const otpRecord = await otpModel.findOne({ email });
-        if (!otpRecord || otpRecord.otp !== otp) {
-            return res.json({ success: false, message: "Invalid or expired OTP" });
+        // 1. Verify OTP (ONLY IF NO ROLE IS PROVIDED)
+        // If a role is provided (like 'Deliveryman'), we assume it's an Admin creating it, so we skip OTP.
+        if (!role) { 
+            const otpRecord = await otpModel.findOne({ email });
+            if (!otpRecord || otpRecord.otp !== otp) {
+                return res.json({ success: false, message: "Invalid or expired OTP" });
+            }
         }
 
         // 2. Standard Validation
@@ -73,17 +76,20 @@ const registerUser = async (req, res) => {
             email,
             phone,
             password: hashedPassword,
-            address: address || {}
+            address: address || {},
+            role: role || 'User' // Save the role (Deliveryman/Admin/User)
         });
 
         const user = await newUser.save();
 
-        // 4. Delete Used OTP
-        await otpModel.deleteOne({ email });
+        // 4. Delete Used OTP (Only if OTP was used)
+        if (!role) {
+            await otpModel.deleteOne({ email });
+        }
 
         const token = createToken(user._id);
 
-        return res.json({ success: true, token, message: "Signup successful" });
+        return res.json({ success: true, token, message: "Account created successful" });
 
     } catch (error) {
         console.error("Register User Error:", error);
@@ -91,7 +97,7 @@ const registerUser = async (req, res) => {
     }
 };
 
-// --- 3. USER LOGIN ---
+// --- 3. USER LOGIN (UPDATED: Returns Role) ---
 const loginUser = async (req, res) => {
     try {
         const { email, password } = req.body;
@@ -102,7 +108,9 @@ const loginUser = async (req, res) => {
         if (!isMatch) return res.json({ success: false, message: "Invalid credentials" });
 
         const token = createToken(user._id);
-        return res.json({ success: true, token });
+        
+        // Return success, token, AND ROLE (Crucial for Rider App)
+        return res.json({ success: true, token, role: user.role });
 
     } catch (error) {
         console.error("Login Error:", error);

@@ -15,7 +15,7 @@ import HomeConfig from './pages/HomeConfig'
 import Content from './pages/Content';
 import Users from './pages/Users'
 import ManageUser from './pages/ManageUser'
-import Dashboard from './pages/Dashboard'; // Already imported
+import Dashboard from './pages/Dashboard';
 import Reviews from './pages/Reviews'
 import Profile from './pages/Profile';
 
@@ -55,7 +55,10 @@ const App = () => {
                 <Route path='/users' element={<Users token={token} />} />
                 <Route path='/profile' element={<Profile token={token} />} />
                 <Route path='/reviews' element={<Reviews token={token} />} />
-                <Route path='/manage-user' element={<ManageUser token={token} />} />
+                
+                {/* FIXED: Changed path to /staff to match your Sidebar link */}
+                <Route path='/staff' element={<ManageUser token={token} />} />
+                
                 <Route path='/category' element={<Category token={token} />} />
               </Routes>
             </div>

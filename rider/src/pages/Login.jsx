@@ -13,19 +13,19 @@ const Login = ({ setToken }) => {
   const onSubmitHandler = async (e) => {
     e.preventDefault();
     try {
-      const response = await axios.post(backendUrl + '/api/user/staff/login', { email, password });
+      // CHANGED: Using the standard '/api/user/login' endpoint
+      const response = await axios.post(backendUrl + '/api/user/login', { email, password });
       
       if (response.data.success) {
-        // Check if the user is actually a deliveryman
-        if(response.data.role !== 'Deliveryman') {
-            toast.error("Access Denied. Rider App only.");
-            return;
+        // Security Check: Ensure the user is actually a Deliveryman
+        if(response.data.role === 'Deliveryman') {
+            toast.success("Welcome Rider!");
+            setToken(response.data.token);
+            localStorage.setItem('token', response.data.token);
+            navigate('/dashboard');
+        } else {
+            toast.error("Access Denied. You are not a registered Rider.");
         }
-
-        toast.success("Welcome Rider!");
-        setToken(response.data.token);
-        localStorage.setItem('token', response.data.token);
-        navigate('/');
       } else {
         toast.error(response.data.message);
       }
@@ -39,7 +39,7 @@ const Login = ({ setToken }) => {
     <div className='min-h-screen flex items-center justify-center bg-gray-100 px-4'>
       <div className='bg-white shadow-md rounded-lg px-8 py-10 w-full max-w-md'>
         <div className='mb-8 text-center'>
-            <h1 className='text-3xl font-bold text-green-700'>Babai Rider</h1>
+            <h1 className='text-3xl font-bold text-gray-800'>Babai Rider</h1>
             <p className='text-gray-500'>Delivery Partner Login</p>
         </div>
         
@@ -67,7 +67,7 @@ const Login = ({ setToken }) => {
             />
           </div>
           <button 
-            className='bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded w-full focus:outline-none focus:shadow-outline transition duration-200' 
+            className='bg-black hover:bg-gray-800 text-white font-bold py-3 px-4 rounded w-full focus:outline-none focus:shadow-outline transition duration-200' 
             type="submit"
           >
             Sign In
