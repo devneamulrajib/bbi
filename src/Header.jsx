@@ -1,9 +1,9 @@
 import React, { useContext, useState, useEffect, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { ShopContext } from './context/ShopContext';
+import { ShopContext } from './context/ShopContext'; 
 import { 
   ShieldCheck, Search, User, ShoppingBag, Menu, ChevronDown, ChevronRight, 
-  Apple, Beef, Egg, Coffee, Cookie, Snowflake, Candy, Wheat, FolderOpen, LogOut, X, MapPin
+  Apple, Beef, Egg, Coffee, Cookie, Snowflake, Candy, Wheat, FolderOpen, LogOut, X, Circle
 } from 'lucide-react';
 
 const Header = () => {
@@ -59,11 +59,13 @@ const Header = () => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  // --- HELPER: Normalize Strings ---
   const createSlug = (name) => {
     if (!name) return "";
     return name.toLowerCase().replace(/&/g, '').replace(/[^\w\s]/gi, '').trim().replace(/\s+/g, '-');
   };
 
+  // --- HELPER: Get Category Icon ---
   const getCategoryIcon = (name) => {
     const lowerName = name.toLowerCase();
     if (lowerName.includes('fruit') || lowerName.includes('vegetable')) return Apple;
@@ -78,7 +80,7 @@ const Header = () => {
   };
 
   return (
-    <div className="sticky top-0 z-50 bg-white shadow-sm w-full">
+    <div className="sticky top-0 z-50 bg-white shadow-sm w-full font-sans">
       
       {/* Top Bar */}
       <div className="bg-[#233a95] text-white text-center py-1.5 text-xs md:text-sm font-medium hidden md:block">
@@ -195,47 +197,74 @@ const Header = () => {
         <div className="container mx-auto px-4">
             <div className="flex flex-col lg:flex-row lg:items-center gap-0 lg:gap-8 relative z-40">
             
+            {/* --- UPDATED CATEGORIES DROPDOWN --- */}
             <div className="w-full lg:w-auto py-2 lg:py-0 group" ref={catMenuRef}>
                 <button 
                   onClick={() => setShowCategories(!showCategories)} 
-                  className="w-full lg:w-60 bg-[#2bbef9] hover:bg-[#209dd0] text-white px-4 py-2 lg:py-2.5 rounded-full flex items-center justify-between font-bold transition shadow-sm text-xs md:text-sm"
+                  className="w-full lg:w-64 bg-[#2bbef9] hover:bg-[#209dd0] text-white px-5 py-3 rounded-full flex items-center justify-between font-bold transition shadow-sm text-xs md:text-sm uppercase tracking-wide"
                 >
                   <div className="flex items-center gap-2">
-                    <Menu size={16} /><span>ALL CATEGORIES</span>
+                    <Menu size={18} /><span>All Categories</span>
                   </div>
-                  {showCategories ? <X size={14} /> : <ChevronDown size={14} />}
+                  {showCategories ? <X size={16} /> : <ChevronDown size={16} />}
                 </button>
 
-                <div className={`${showCategories ? 'block' : 'hidden'} md:group-hover:block absolute top-full left-0 w-full lg:w-60 bg-white border border-gray-200 shadow-xl rounded-xl pt-2 pb-2 mt-1 z-50`}>
-                  <ul className="flex flex-col max-h-[60vh] overflow-y-auto">
+                {/* Dropdown Container */}
+                <div className={`${showCategories ? 'block' : 'hidden'} md:group-hover:block absolute top-full left-0 w-64 bg-white border border-gray-200 shadow-2xl rounded-xl py-3 mt-2 z-[100]`}>
+                  <ul className="flex flex-col">
                       {categories.length > 0 ? categories.map((cat, index) => {
                       const IconComponent = getCategoryIcon(cat.name);
+                      const hasSubCats = cat.subCategories && cat.subCategories.length > 0;
+                      
                       return (
-                          <Link key={index} to={`/category/${createSlug(cat.name)}`} onClick={() => setShowCategories(false)}>
-                          <li className="group/item flex items-center justify-between px-5 py-2.5 hover:bg-blue-50 cursor-pointer transition-colors border-b border-gray-50 last:border-0">
-                              <div className="flex items-center gap-3 text-gray-500 group-hover/item:text-[#2bbef9]">
-                              <IconComponent size={18} strokeWidth={1.5} />
-                              <span className="font-medium text-xs text-gray-700 group-hover/item:text-[#2bbef9] capitalize">{cat.name}</span>
-                              </div>
-                              <ChevronRight size={14} className="text-gray-300" />
+                          <li key={index} className="group/item relative">
+                              
+                              {/* Parent Category Link */}
+                              <Link 
+                                to={`/category/${createSlug(cat.name)}`} 
+                                onClick={() => setShowCategories(false)}
+                                className="flex items-center justify-between px-5 py-2.5 hover:bg-blue-50 cursor-pointer transition-colors"
+                              >
+                                  <div className="flex items-center gap-3 text-gray-500 group-hover/item:text-[#2bbef9]">
+                                      <IconComponent size={18} strokeWidth={1.5} />
+                                      <span className="font-medium text-sm text-gray-700 group-hover/item:text-[#2bbef9] capitalize">{cat.name}</span>
+                                  </div>
+                                  {hasSubCats && <ChevronRight size={14} className="text-gray-300 group-hover/item:text-[#2bbef9]" />}
+                              </Link>
+
+                              {/* === SUB CATEGORY FLYOUT === */}
+                              {hasSubCats && (
+                                  <div className="hidden group-hover/item:block absolute left-[98%] top-0 w-56 bg-white border border-gray-100 shadow-xl rounded-lg z-[110] ml-1 p-3">
+                                      <p className='px-2 py-1 text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2 border-b border-gray-100 pb-2'>
+                                        {cat.name}
+                                      </p>
+                                      <ul className="flex flex-col gap-0.5">
+                                          {cat.subCategories.map((sub, subIdx) => (
+                                              <li key={subIdx}>
+                                                  <Link 
+                                                    to={`/category/${createSlug(cat.name)}?sub=${encodeURIComponent(sub)}`} 
+                                                    onClick={() => setShowCategories(false)}
+                                                    className="flex items-center gap-2 px-3 py-1.5 text-xs text-gray-600 hover:text-[#2bbef9] hover:bg-blue-50 rounded transition-colors"
+                                                  >
+                                                      <Circle size={4} fill="currentColor" />
+                                                      {sub}
+                                                  </Link>
+                                              </li>
+                                          ))}
+                                      </ul>
+                                  </div>
+                              )}
                           </li>
-                          </Link>
                       )
                       }) : <li className="px-6 py-3 text-sm text-gray-400">Loading categories...</li>}
                   </ul>
                 </div>
             </div>
 
-            <nav className="flex items-center gap-4 md:gap-6 text-xs font-bold uppercase text-gray-600 w-full lg:w-auto tracking-wide overflow-x-auto whitespace-nowrap pb-2 lg:pb-0 hide-scrollbar">
+            <nav className="flex items-center gap-4 md:gap-6 text-xs font-bold uppercase text-gray-600 w-full lg:w-auto tracking-wide overflow-x-auto whitespace-nowrap pb-2 lg:pb-0 hide-scrollbar pl-2 lg:pl-0">
                 <Link to="/" className={`hover:text-blue-500 ${isActive('/') ? 'text-blue-600' : ''}`}>HOME</Link>
                 <Link to="/collection" className={`hover:text-blue-500 ${isActive('/collection') ? 'text-blue-600' : ''}`}>SHOP</Link>
-                <Link to="/blog" className={`hover:text-blue-500 ${isActive('/blog') ? 'text-blue-600' : ''}`}>BLOG</Link>
-                
-                {/* NEW TRACK ORDER LINK */}
-                <Link to="/order-tracking" className={`hover:text-blue-500 flex items-center gap-1 ${isActive('/order-tracking') ? 'text-blue-600' : ''}`}>
-                    TRACK ORDER
-                </Link>
-
+                <Link to="/order-tracking" className={`hover:text-blue-500 flex items-center gap-1 ${isActive('/order-tracking') ? 'text-blue-600' : ''}`}>TRACK ORDER</Link>
                 <Link to="/contact" className={`hover:text-blue-500 ${isActive('/contact') ? 'text-blue-600' : ''}`}>CONTACT</Link>
             </nav>
             </div>

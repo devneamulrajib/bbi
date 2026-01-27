@@ -18,6 +18,7 @@ import ManageUser from './pages/ManageUser'
 import Dashboard from './pages/Dashboard';
 import Reviews from './pages/Reviews'
 import Profile from './pages/Profile';
+import Messages from './pages/Messages';
 
 export const backendUrl = import.meta.env.VITE_BACKEND_URL
 export const currency = 'Tk ' // <--- This fixes your error
@@ -55,6 +56,7 @@ const App = () => {
                 <Route path='/users' element={<Users token={token} />} />
                 <Route path='/profile' element={<Profile token={token} />} />
                 <Route path='/reviews' element={<Reviews token={token} />} />
+                <Route path="/messages" element={<Messages token={token} />} />
                 <Route path='/staff' element={<ManageUser token={token} />} />
                 <Route path='/category' element={<Category token={token} />} />
               </Routes>

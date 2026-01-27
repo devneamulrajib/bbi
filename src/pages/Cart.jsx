@@ -5,7 +5,7 @@ import { Link } from 'react-router-dom'
 import { toast } from 'react-toastify'
 
 const Cart = () => {
-  const { products, currency, cartItems, updateQuantity, navigate, getCartAmount, token, delivery_fee, verifyPromo, discountAmount, couponCode } = useContext(ShopContext);
+  const { products, currency, cartItems, updateQuantity, navigate, getCartAmount, delivery_fee, verifyPromo, discountAmount, couponCode } = useContext(ShopContext);
   const [cartData, setCartData] = useState([]);
   const [promoInput, setPromoInput] = useState("");
 
@@ -27,12 +27,8 @@ const Cart = () => {
   }, [cartItems, products]);
 
   const handleCheckout = () => {
-      if (!token) {
-          toast.info("Please Login to Checkout");
-          navigate('/login');
-      } else {
-          navigate('/place-order');
-      }
+      // Changed: Removed the forced Login check so Guest Checkout works
+      navigate('/place-order');
   }
 
   const applyCoupon = () => {

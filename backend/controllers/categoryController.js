@@ -5,14 +5,25 @@ const addCategory = async (req, res) => {
     try {
         const { name, subCategories } = req.body;
         
+        // Validation
         const exists = await categoryModel.findOne({ name });
         if(exists) {
             return res.json({ success: false, message: "Category already exists" });
         }
 
+        // Logic to ensure subCategories is an array (even if sent as JSON string)
+        let subCatArray = subCategories;
+        if (typeof subCategories === 'string') {
+            try {
+                subCatArray = JSON.parse(subCategories);
+            } catch (e) {
+                subCatArray = subCategories.split(','); // Fallback
+            }
+        }
+
         const category = new categoryModel({ 
             name, 
-            subCategories: subCategories || [] 
+            subCategories: subCatArray || [] 
         });
         
         await category.save();
@@ -33,14 +44,23 @@ const listCategory = async (req, res) => {
     }
 }
 
-// --- NEW: Update Category ---
+// Update Category
 const updateCategory = async (req, res) => {
     try {
         const { id, name, subCategories } = req.body;
         
+        let subCatArray = subCategories;
+        if (typeof subCategories === 'string') {
+             try {
+                subCatArray = JSON.parse(subCategories);
+            } catch (e) {
+                subCatArray = subCategories.split(',');
+            }
+        }
+
         await categoryModel.findByIdAndUpdate(id, {
             name,
-            subCategories
+            subCategories: subCatArray
         });
 
         res.json({ success: true, message: "Category Updated Successfully" });
@@ -60,7 +80,7 @@ const removeCategory = async (req, res) => {
     }
 }
 
-// Remove specific SubCategory
+// Remove specific SubCategory (API endpoint utility)
 const removeSubCategory = async (req, res) => {
     try {
         const { categoryId, subCatName } = req.body;

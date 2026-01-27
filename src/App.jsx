@@ -1,12 +1,12 @@
 import React, { useEffect } from 'react';
 import { Routes, Route, Outlet, useLocation } from 'react-router-dom';
 
-// Import Components
-import Header from './Header';
+// Import Components (Root Level)
+import Header from './Header'; 
 import Footer from './components/Footer'; 
 import CartSidebar from './components/CartSidebar'; 
 
-// Import Pages
+// Import Pages (Root Level)
 import Home from './Home';
 import Login from './Login';
 import CategoryPage from './CategoryPage';
@@ -14,12 +14,14 @@ import Contact from './Contact';
 import Blog from './Blog';
 import BestSellerPage from './BestSellerPage';
 import CollectionPage from './CollectionPage';
+
+// Import Pages (Inside 'pages' folder)
 import Product from './pages/Product';
 import LegalPage from './pages/LegalPage'; 
 import MyProfile from './pages/MyProfile';
 import Cart from './pages/Cart';
 import PlaceOrder from './pages/PlaceOrder';
-import OrderTracking from './pages/OrderTracking'; // <--- IMPORT ADDED
+import OrderTracking from './pages/OrderTracking'; // Ensure file exists at src/pages/OrderTracking.jsx
 
 // --- LAYOUT COMPONENT ---
 const Layout = () => {
@@ -33,7 +35,6 @@ const Layout = () => {
   return (
     <>
       <CartSidebar /> 
-      
       <Header />
       <div className="min-h-screen">
         <Outlet />
@@ -57,6 +58,7 @@ function App() {
           <Route path="blog" element={<Blog />} />
           <Route path="contact" element={<Contact />} />
           <Route path="collection" element={<CollectionPage />} />
+          
           <Route path='/product/:productId' element={<Product />} />
           <Route path="/my-profile" element={<MyProfile />} />
           <Route path='/cart' element={<Cart />} />

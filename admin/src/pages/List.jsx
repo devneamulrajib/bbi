@@ -61,7 +61,7 @@ const List = ({ token }) => {
             <img className='w-12 h-12 object-cover rounded' src={item.image && item.image[0]} alt="" />
             <p>{item.name}</p>
             <p>{item.category}</p>
-            <p>${item.price}</p>
+            <p>৳{item.price}</p>
             
             {/* TOGGLE FLAGS */}
             <div className='flex justify-center gap-2'>

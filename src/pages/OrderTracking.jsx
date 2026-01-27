@@ -1,14 +1,27 @@
-import React, { useState, useContext } from 'react';
+import React, { useState, useContext, useEffect } from 'react';
 import { ShopContext } from '../context/ShopContext';
 import axios from 'axios';
-import { Search, Package, Clock, CheckCircle, Truck } from 'lucide-react';
+import { useLocation } from 'react-router-dom'; // Added useLocation
+import { Search, Package, Clock, CheckCircle, Truck, X } from 'lucide-react'; // Added X
 
 const OrderTracking = () => {
     const { backendUrl, currency } = useContext(ShopContext);
+    const location = useLocation(); // Hook to get navigation state
+    
     const [phone, setPhone] = useState('');
     const [orders, setOrders] = useState([]);
     const [searched, setSearched] = useState(false);
     const [loading, setLoading] = useState(false);
+    const [showSuccessPopup, setShowSuccessPopup] = useState(false); // State for Popup
+
+    // --- CHECK FOR SUCCESS SIGNAL FROM PLACE ORDER ---
+    useEffect(() => {
+        if (location.state && location.state.orderSuccess) {
+            setShowSuccessPopup(true);
+            // Clear state so popup doesn't reappear on refresh
+            window.history.replaceState({}, document.title);
+        }
+    }, [location]);
 
     const handleTrack = async (e) => {
         e.preventDefault();
@@ -27,7 +40,43 @@ const OrderTracking = () => {
     };
 
     return (
-        <div className="min-h-[70vh] container mx-auto px-4 py-10 pt-20">
+        <div className="min-h-[70vh] container mx-auto px-4 py-10 pt-20 relative">
+            
+            {/* ================= SUCCESS POPUP MODAL ================= */}
+            {showSuccessPopup && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-300">
+                    <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-sm w-full text-center relative transform transition-all scale-100">
+                        {/* Close Button */}
+                        <button 
+                            onClick={() => setShowSuccessPopup(false)}
+                            className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 p-1 bg-gray-100 rounded-full transition"
+                        >
+                            <X size={20} />
+                        </button>
+
+                        {/* Success Icon */}
+                        <div className="mx-auto flex items-center justify-center h-20 w-20 rounded-full bg-green-100 mb-6 shadow-inner">
+                            <CheckCircle className="h-12 w-12 text-green-600" />
+                        </div>
+
+                        {/* Text Content */}
+                        <h2 className="text-2xl font-bold text-gray-900 mb-2">Order Placed!</h2>
+                        <p className="text-gray-500 mb-8 text-sm leading-relaxed">
+                            Your order has been successfully placed. You can use your phone number to track its delivery status below.
+                        </p>
+
+                        {/* Action Button */}
+                        <button 
+                            onClick={() => setShowSuccessPopup(false)}
+                            className="w-full bg-[#233a95] text-white font-bold py-3.5 rounded-xl hover:bg-[#1a2b75] transition transform active:scale-95 shadow-lg shadow-blue-900/20"
+                        >
+                            Okay, Got it!
+                        </button>
+                    </div>
+                </div>
+            )}
+            {/* ========================================================= */}
+
             <div className="max-w-xl mx-auto text-center mb-10">
                 <h2 className="text-3xl font-bold text-[#233a95] mb-4">Track Your Order</h2>
                 <p className="text-gray-500 mb-6">Enter the mobile number you used during checkout to see your order status.</p>

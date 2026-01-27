@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import axios from 'axios'
-import { backendUrl, currency } from '../App' // Ensure currency is imported or define it
+import { backendUrl, currency } from '../App' 
 import { toast } from 'react-toastify'
 import { assets } from '../assets/assets' 
 import jsPDF from 'jspdf'
@@ -14,7 +14,7 @@ const Orders = ({ token }) => {
 
   const [orders, setOrders] = useState([]) 
   const [filteredOrders, setFilteredOrders] = useState([]) 
-  const [riders, setRiders] = useState([]) // State for Riders
+  const [riders, setRiders] = useState([]) 
   const [loading, setLoading] = useState(true)
 
   // Filters
@@ -29,15 +29,46 @@ const Orders = ({ token }) => {
   const [selectedOrder, setSelectedOrder] = useState(null)
   const [showModal, setShowModal] = useState(false)
 
-  // --- FETCH ORDERS ---
+  // --- HELPER: ROBUST NAME FINDER ---
+  const getCustomerName = (order) => {
+    try {
+        // 1. Check Root Level Name (Often used for Guest orders)
+        if (order.name && order.name.trim() !== "") return order.name;
+
+        // 2. Check Address Object (Standard for Logged-in users)
+        if (order.address) {
+            // Check for firstName/lastName (CamelCase)
+            if (order.address.firstName || order.address.lastName) {
+                return `${order.address.firstName || ''} ${order.address.lastName || ''}`.trim();
+            }
+            // Check for "name" property in address
+            if (order.address.name && order.address.name.trim() !== "") return order.address.name;
+            
+            // Check for lowercase variations (just in case database saved it weirdly)
+            if (order.address.firstname || order.address.lastname) {
+                return `${order.address.firstname || ''} ${order.address.lastname || ''}`.trim();
+            }
+        }
+        
+        // 3. Check User ID populated name (Fallback for Logged-in)
+        if (order.userId && order.userId.name) return order.userId.name;
+
+        // 4. Fallback if no name found anywhere
+        return "Guest"; 
+    } catch (error) {
+        return "Unknown";
+    }
+  }
+
+  // --- FETCH ORDERS (FIXED SORTING) ---
   const fetchAllOrders = async () => {
     if (!token) return
     try {
-      // Matches backend/routes/orderRoute.js -> router.post('/list')
       const response = await axios.post(backendUrl + '/api/order/list', {}, { headers: { token } });
-      
       if (response.data.success) {
-        setOrders(response.data.orders)
+        // --- FIX: Explicitly sort by Date (Newest First) ---
+        const sortedOrders = response.data.orders.sort((a, b) => new Date(b.date) - new Date(a.date));
+        setOrders(sortedOrders);
       } else {
         toast.error(response.data.message)
       }
@@ -51,10 +82,8 @@ const Orders = ({ token }) => {
   // --- FETCH RIDERS ---
   const fetchRiders = async () => {
     try {
-      // Matches backend/routes/userRoute.js -> router.get('/list')
       const response = await axios.get(backendUrl + '/api/user/list', { headers: { token } })
       if (response.data.success) {
-        // Filter only users with role 'Deliveryman'
         const deliveryMen = response.data.users.filter(member => member.role === 'Deliveryman')
         setRiders(deliveryMen)
       }
@@ -65,12 +94,11 @@ const Orders = ({ token }) => {
 
   // --- ASSIGN RIDER HANDLER ---
   const assignRiderHandler = async (orderId, riderId) => {
-    // Matches backend/routes/orderRoute.js -> router.post('/assign')
     try {
       const response = await axios.post(backendUrl + '/api/order/assign', { orderId, riderId }, { headers: { token } })
       if (response.data.success) {
         toast.success(response.data.message)
-        fetchAllOrders() // Refresh orders to show assigned rider
+        fetchAllOrders() 
       } else {
         toast.error(response.data.message)
       }
@@ -86,7 +114,6 @@ const Orders = ({ token }) => {
       if(status) payload.status = status;
       if(payment !== null) payload.payment = payment;
 
-      // Matches backend/routes/orderRoute.js -> router.post('/status')
       const response = await axios.post(backendUrl + '/api/order/status', payload, { headers: { token } })
       if (response.data.success) {
         await fetchAllOrders() 
@@ -119,10 +146,11 @@ const Orders = ({ token }) => {
 
     if (searchTerm) {
       const lowerTerm = searchTerm.toLowerCase();
-      result = result.filter(order => 
-        order._id.toLowerCase().includes(lowerTerm) ||
-        (order.address.firstName + " " + order.address.lastName).toLowerCase().includes(lowerTerm)
-      );
+      result = result.filter(order => {
+        const fullName = getCustomerName(order);
+        return order._id.toLowerCase().includes(lowerTerm) ||
+               fullName.toLowerCase().includes(lowerTerm);
+      });
     }
 
     if (statusFilter !== 'All') {
@@ -165,7 +193,6 @@ const Orders = ({ token }) => {
   const generateInvoice = (order) => {
     try {
         const doc = new jsPDF();
-        // Use provided currency or default to Tk
         const curr = currency || 'Tk '; 
 
         try {
@@ -176,6 +203,7 @@ const Orders = ({ token }) => {
             console.warn("Logo failed to load");
         }
 
+        // Header
         doc.setFontSize(20);
         doc.setTextColor(0, 100, 0); 
         doc.text("BabaiBangladesh", 35, 20);
@@ -187,12 +215,12 @@ const Orders = ({ token }) => {
 
         doc.setFontSize(14);
         doc.setTextColor(0);
-        doc.text("INVOICE", 160, 20);
+        doc.text("INVOICE", 140, 20);
         
         doc.setFontSize(10);
-        doc.text(`#${order._id.slice(-6).toUpperCase()}`, 160, 26);
+        doc.text(`#${order._id.slice(-6).toUpperCase()}`, 140, 26);
         const orderDate = order.date ? new Date(order.date).toLocaleDateString() : 'N/A';
-        doc.text(`Date: ${orderDate}`, 160, 31);
+        doc.text(`Date: ${orderDate}`, 140, 31);
 
         const paymentStatus = order.payment ? "PAID" : "UNPAID";
         doc.setFontSize(12);
@@ -201,16 +229,31 @@ const Orders = ({ token }) => {
         } else {
             doc.setTextColor(200, 0, 0); 
         }
-        doc.text(paymentStatus, 160, 38);
+        doc.text(paymentStatus, 140, 38);
         doc.setTextColor(0); 
 
+        // --- BILL TO ---
         doc.setFontSize(10);
         doc.text("Bill To:", 10, 50);
         doc.setTextColor(60);
-        const fullName = `${order.address.firstName || ''} ${order.address.lastName || ''}`;
+        
+        const fullName = getCustomerName(order);
+            
         doc.text(fullName, 10, 56);
         doc.text(order.address.phone || '', 10, 61);
         doc.text(`${order.address.street || ''}, ${order.address.city || ''}`, 10, 66);
+
+        // --- RIDER INFO ---
+        if (order.riderId) {
+            const assignedRider = riders.find(r => r._id === order.riderId);
+            if(assignedRider) {
+                doc.setTextColor(0);
+                doc.text("Rider Details:", 140, 50);
+                doc.setTextColor(60);
+                doc.text(`Name: ${assignedRider.name}`, 140, 56);
+                doc.text(`Phone: ${assignedRider.phone}`, 140, 61);
+            }
+        }
 
         const tableColumn = ["Item", "Size", "Qty", "Price", "Total"];
         const tableRows = [];
@@ -285,9 +328,8 @@ const Orders = ({ token }) => {
         let csvContent = "data:text/csv;charset=utf-8,ID,Date,Name,Total,Status,Payment,Rider\n";
         filteredOrders.forEach(o => {
             const date = o.date ? new Date(o.date).toLocaleDateString() : 'N/A';
-            const name = o.address ? `${o.address.firstName} ${o.address.lastName}` : 'Guest';
+            const name = getCustomerName(o); 
             
-            // Find Rider Name
             const assignedRider = riders.find(r => r._id === o.riderId);
             const riderName = assignedRider ? assignedRider.name : 'Unassigned';
 
@@ -318,7 +360,6 @@ const Orders = ({ token }) => {
       {/* FILTER BAR */}
       <div className='bg-white p-5 rounded-lg shadow mb-6'>
         <div className='flex flex-wrap gap-4 items-center justify-between mb-4'>
-            {/* Search */}
             <div className='relative w-full md:w-64'>
                 <Search className='absolute left-3 top-2.5 text-gray-400' size={18} />
                 <input 
@@ -330,7 +371,6 @@ const Orders = ({ token }) => {
                 />
             </div>
 
-            {/* Controls */}
             <div className='flex flex-wrap gap-2 text-sm'>
                 <select className='border px-3 py-2 rounded outline-none cursor-pointer' value={statusFilter} onChange={(e)=>setStatusFilter(e.target.value)}>
                     <option value="All">Status: All</option>
@@ -360,7 +400,6 @@ const Orders = ({ token }) => {
             </div>
         </div>
 
-        {/* Date Filters */}
         <div className='flex flex-wrap gap-4 items-center border-t pt-4 text-sm'>
             <div className='flex items-center gap-2'>
                 <span className='text-gray-500'>From:</span>
@@ -387,7 +426,7 @@ const Orders = ({ token }) => {
                         <th className='p-4'>Customer</th>
                         <th className='p-4'>Payment</th>
                         <th className='p-4'>Amount</th>
-                        <th className='p-4'>Rider</th> {/* New Column */}
+                        <th className='p-4'>Rider</th> 
                         <th className='p-4'>Status</th>
                         <th className='p-4'>Action</th>
                         <th className='p-4 text-center'>View</th>
@@ -400,8 +439,9 @@ const Orders = ({ token }) => {
                             <td className='p-4'>
                                 {order.date ? new Date(order.date).toLocaleDateString() : 'N/A'}
                             </td>
+                            {/* CUSTOMER NAME - Use Helper */}
                             <td className='p-4 font-medium'>
-                                {order.address.firstName} {order.address.lastName}
+                                {getCustomerName(order)}
                                 <div className='text-xs text-gray-400'>{order.address.phone}</div>
                             </td>
                             <td className='p-4'>
@@ -417,7 +457,6 @@ const Orders = ({ token }) => {
                             </td>
                             <td className='p-4 font-bold'>Tk {order.amount}</td>
                             
-                            {/* --- ASSIGN RIDER COLUMN --- */}
                             <td className='p-4'>
                                 <div className='flex items-center gap-1'>
                                   <Bike size={16} className="text-gray-400"/>
@@ -512,7 +551,12 @@ const Orders = ({ token }) => {
                       <div className='grid grid-cols-2 gap-8 mb-6 text-sm'>
                           <div>
                               <h3 className='font-bold text-gray-700 border-b pb-1 mb-2'>Bill To</h3>
-                              <p>{selectedOrder.address.firstName} {selectedOrder.address.lastName}</p>
+                              
+                              {/* USE HELPER FOR NAME */}
+                              <p className='font-semibold text-gray-900'>
+                                {getCustomerName(selectedOrder)}
+                              </p>
+                              
                               <p className='text-gray-500'>{selectedOrder.address.street}</p>
                               <p className='text-gray-500'>{selectedOrder.address.city}, {selectedOrder.address.zipcode}</p>
                               <p className='text-gray-500'>{selectedOrder.address.phone}</p>
@@ -522,11 +566,9 @@ const Orders = ({ token }) => {
                             <p>Method: <span className='font-semibold'>{selectedOrder.paymentMethod}</span></p>
                             <p>Status: <span className='font-semibold text-blue-600'>{selectedOrder.status}</span></p>
                             
-                            {/* Rider Info in Modal */}
                             {selectedOrder.riderId && (
-                                <p className='mt-2 bg-blue-50 p-1 rounded'>
-                                    <span className='font-semibold text-blue-700'>Assigned Rider:</span> 
-                                    <br/>
+                                <p className='mt-2 bg-blue-50 p-2 rounded border border-blue-100'>
+                                    <span className='font-semibold text-blue-800 block text-xs uppercase mb-1'>Assigned Rider</span> 
                                     {riders.find(r => r._id === selectedOrder.riderId)?.name || 'Unknown'}
                                 </p>
                             )}

@@ -1,25 +1,29 @@
 import React, { useContext, useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams, useLocation, useNavigate } from 'react-router-dom';
 import { ShopContext } from './context/ShopContext';
 import { 
-  ShoppingBag, Grid, List, ChevronRight, ShoppingCart, Star,
-  Apple, Beef, Egg, Coffee, Cookie, Snowflake, Candy, Wheat, FolderOpen
+  ShoppingBag, Grid, List, ChevronRight, ChevronDown, 
+  Apple, Beef, Egg, Coffee, Cookie, Snowflake, Candy, Wheat, FolderOpen, Filter, Circle, Star, Minus, Plus
 } from 'lucide-react';
 
 const CategoryPage = () => {
   const { slug } = useParams();
-  const { products, categories, currency, addToCart } = useContext(ShopContext);
+  const location = useLocation(); // Hook to get URL params
+  const navigate = useNavigate(); // Hook to update URL
+  const { products, categories, currency, addToCart, cartItems, updateQuantity } = useContext(ShopContext);
   
   const [displayProducts, setDisplayProducts] = useState([]);
   const [activeCategoryName, setActiveCategoryName] = useState("");
+  const [availableSubCats, setAvailableSubCats] = useState([]);
+  const [activeSubCat, setActiveSubCat] = useState("All");
+  const [viewMode, setViewMode] = useState('grid'); 
 
-  // --- HELPER: Normalize Strings (e.g. "Fruits & Vegetables" -> "fruits-vegetables") ---
+  // --- HELPER: Normalize Strings ---
   const createSlug = (name) => {
     if (!name) return "";
     return name.toLowerCase().replace(/&/g, '').replace(/[^\w\s]/gi, '').trim().replace(/\s+/g, '-');
   };
 
-  // --- HELPER: Get Icon based on name ---
   const getCategoryIcon = (name) => {
     const lowerName = name.toLowerCase();
     if (lowerName.includes('fruit') || lowerName.includes('vegetable')) return Apple;
@@ -33,150 +37,278 @@ const CategoryPage = () => {
     return FolderOpen;
   };
 
-  // --- FILTER LOGIC ---
+  // --- EFFECT: Handle URL Params (The Fix) ---
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    const subParam = searchParams.get('sub');
+    if (subParam) {
+      setActiveSubCat(decodeURIComponent(subParam));
+    } else {
+      setActiveSubCat("All");
+    }
+  }, [location.search, slug]);
+
+
+  // --- MAIN FILTER LOGIC ---
   useEffect(() => {
     if (products.length > 0 || categories.length > 0) {
-      
-      // 1. Find the "Human Readable" name from the DB Categories list based on URL slug
       const foundCategory = categories.find(cat => createSlug(cat.name) === slug);
-      const readableName = foundCategory ? foundCategory.name : slug.replace(/-/g, ' ');
-      setActiveCategoryName(readableName);
+      
+      if (foundCategory) {
+          setActiveCategoryName(foundCategory.name);
+          if(foundCategory.subCategories && foundCategory.subCategories.length > 0) {
+            setAvailableSubCats(["All", ...foundCategory.subCategories]);
+          } else {
+            setAvailableSubCats([]);
+          }
+      } else {
+          setActiveCategoryName(slug.replace(/-/g, ' '));
+          setAvailableSubCats([]);
+      }
 
-      // 2. Filter Products
-      const filtered = products.filter((item) => {
+      let filtered = products.filter((item) => {
          const itemSlug = createSlug(item.category);
          return itemSlug === slug || item.category.toLowerCase() === slug.toLowerCase();
       });
 
+      if (activeSubCat !== "All") {
+        filtered = filtered.filter(item => 
+            item.subCategory === activeSubCat || 
+            item.subCategory?.toLowerCase() === activeSubCat.toLowerCase()
+        );
+      }
       setDisplayProducts(filtered);
     }
-  }, [slug, products, categories]);
+  }, [slug, products, categories, activeSubCat]);
+
+  // --- HANDLER: Update URL when clicking on-page filters ---
+  const handleSubCatClick = (sub) => {
+    setActiveSubCat(sub);
+    // Update URL to match selection
+    if (sub === 'All') {
+        navigate(`/category/${slug}`);
+    } else {
+        navigate(`/category/${slug}?sub=${encodeURIComponent(sub)}`);
+    }
+  };
+
+  const getItemCount = (itemId, size) => {
+      if (cartItems && cartItems[itemId] && cartItems[itemId][size]) {
+          return cartItems[itemId][size];
+      }
+      return 0;
+  };
+
+  const handleQuantityChange = (itemId, size, currentQty, type) => {
+      if (type === 'inc') {
+          addToCart(itemId, size);
+      } else if (type === 'dec') {
+          updateQuantity(itemId, size, currentQty - 1);
+      }
+  };
+
+  const getReviewCount = (item) => {
+    if (Array.isArray(item.reviews)) return item.reviews.length;
+    if (typeof item.reviews === 'number') return item.reviews;
+    return 0;
+  };
 
   return (
     <div className="min-h-screen bg-white font-sans text-gray-700">
-      
-      {/* Page Content */}
-      <div className="container mx-auto px-4 py-8">
-        <div className="flex flex-col lg:flex-row gap-8">
+      <div className="container mx-auto px-4 py-4 md:py-8">
+        <div className="flex flex-col lg:flex-row gap-6 lg:gap-8">
           
-          {/* Left Sidebar */}
-          <div className="w-full lg:w-1/4 flex-shrink-0">
-            {/* Sidebar Category List (Dynamic from DB) */}
-            <div className="mb-8 border border-dashed border-gray-200 p-5 rounded-lg">
+          {/* --- LEFT SIDEBAR --- */}
+          <div className="w-full lg:w-1/4 flex-shrink-0 hidden lg:block">
+            <div className="mb-8 border border-dashed border-gray-200 p-5 rounded-lg sticky top-24">
               <h3 className="font-bold text-sm uppercase text-gray-800 mb-4 tracking-wide">Product Categories</h3>
               <ul className="space-y-1">
                 {categories.map((cat, index) => {
                   const catSlug = createSlug(cat.name);
                   const isActive = catSlug === slug;
                   const IconComponent = getCategoryIcon(cat.name);
+                  const hasSubCats = cat.subCategories && cat.subCategories.length > 0;
 
                   return (
-                    <li key={index}>
+                    <li key={index} className="group">
                       <Link to={`/category/${catSlug}`}>
                         <div className={`flex items-center justify-between py-2.5 px-2 rounded-md cursor-pointer transition-colors ${isActive ? 'text-[#2bbef9] font-bold bg-blue-50' : 'text-gray-500 hover:text-[#2bbef9] hover:bg-gray-50'}`}>
                            <div className="flex items-center gap-2">
                               <IconComponent size={16} />
                               <span className="text-sm capitalize">{cat.name}</span>
                            </div>
-                           {isActive && <ChevronRight size={14} />}
+                           {isActive ? <ChevronDown size={14}/> : <ChevronRight size={14} />}
                         </div>
                       </Link>
+                      {isActive && hasSubCats && (
+                        <ul className="pl-8 mt-1 space-y-1 animate-fadeIn">
+                          {cat.subCategories.map((sub, subIdx) => (
+                            <li 
+                              key={subIdx} 
+                              onClick={() => handleSubCatClick(sub)} // Updated handler
+                              className={`text-sm cursor-pointer hover:text-[#2bbef9] flex items-center gap-2 py-1 ${activeSubCat === sub ? 'text-[#2bbef9] font-medium' : 'text-gray-400'}`}
+                            >
+                              <Circle size={6} fill={activeSubCat === sub ? "currentColor" : "none"} />
+                              {sub}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
                     </li>
                   );
                 })}
               </ul>
             </div>
-
-            {/* Price Filter (Static Visual Only) */}
-            <div className="mb-8 p-5 border border-dashed border-gray-200 rounded-lg">
-               <h3 className="font-bold text-sm uppercase text-gray-800 mb-4 tracking-wide">Filter By Price</h3>
-               <div className="h-1 w-full bg-gray-200 rounded-full mb-4 relative">
-                  <div className="absolute left-0 w-1/2 h-full bg-[#2bbef9] rounded-full"></div>
-                  <div className="absolute left-1/2 w-3 h-3 bg-white border-2 border-[#2bbef9] rounded-full -top-1 shadow cursor-pointer"></div>
-               </div>
-               <div className="text-sm text-gray-500">Price: <span className="text-black font-bold">$0 - $100</span></div>
-            </div>
           </div>
 
-          {/* Right Main Content */}
+          {/* --- RIGHT CONTENT --- */}
           <div className="w-full lg:w-3/4">
              
-             {/* Banner Title */}
-             <div className="w-full h-48 bg-gray-100 rounded-xl mb-8 overflow-hidden relative">
-                <img src="https://images.unsplash.com/photo-1542838132-92c53300491e?q=80&w=2000&auto=format&fit=crop" alt="Category Banner" className="w-full h-full object-cover" />
-                <div className="absolute inset-0 bg-gradient-to-r from-white/90 to-transparent"></div>
-                <div className="absolute top-1/2 left-10 -translate-y-1/2 max-w-lg">
-                   <h2 className="text-2xl md:text-3xl font-bold text-gray-800 mb-1 capitalize">{activeCategoryName}</h2>
-                   <p className="text-gray-600 text-sm">Explore our fresh selection of <span className="text-green-600 font-bold capitalize">{activeCategoryName}</span></p>
+             {/* Banner */}
+             <div className="w-full py-4 md:h-40 bg-gray-50 rounded-lg md:rounded-xl mb-4 md:mb-6 overflow-hidden relative flex items-center px-4 md:px-8 border border-gray-100">
+                <div className="z-10">
+                   <h2 className="text-xl md:text-3xl font-bold text-gray-800 mb-0.5 md:mb-1 capitalize leading-tight">
+                     {activeCategoryName}
+                   </h2>
+                   <p className="text-gray-500 text-xs md:text-sm">
+                     Shop the best <span className="font-bold">{activeCategoryName}</span> products.
+                   </p>
                 </div>
+                <div className="absolute right-0 top-0 h-full w-1/3 md:w-1/2 bg-gradient-to-l from-blue-50 to-transparent opacity-60"></div>
              </div>
 
-             {/* Sorting Toolbar */}
-             <div className="bg-[#f7f8fd] p-4 rounded-lg mb-6 flex flex-col md:flex-row justify-between items-center gap-4 border border-gray-100">
-                <div className="flex items-center gap-3">
-                   <button className="p-2 text-gray-400 hover:text-black transition"><List size={20} /></button>
-                   <button className="p-2 text-black bg-white shadow-sm rounded"><Grid size={20} /></button>
+             {/* Filter Bar */}
+             {availableSubCats.length > 0 && (
+                <div className="mb-4 md:mb-6 overflow-x-auto pb-1 scrollbar-hide">
+                    <div className="flex items-center gap-2 md:gap-3">
+                        <div className='flex items-center gap-1.5 text-xs md:text-sm font-bold text-gray-500 mr-1 md:mr-2 shrink-0'>
+                            <Filter size={14} className="md:w-4 md:h-4"/> Filter:
+                        </div>
+                        {availableSubCats.map((sub, idx) => (
+                            <button 
+                                key={idx}
+                                onClick={() => handleSubCatClick(sub)} // Updated handler
+                                className={`px-3 py-1.5 md:px-4 md:py-1.5 rounded-full text-xs md:text-sm whitespace-nowrap border transition-all 
+                                ${activeSubCat === sub 
+                                    ? 'bg-[#233a95] text-white border-[#233a95]' 
+                                    : 'bg-white text-gray-600 border-gray-200 hover:border-[#233a95] hover:text-[#233a95]'}`}
+                            >
+                                {sub}
+                            </button>
+                        ))}
+                    </div>
                 </div>
-                <p className="text-sm text-gray-500">
+             )}
+
+             {/* Sorting Toolbar */}
+             <div className="bg-[#f7f8fd] p-3 md:p-4 rounded-lg mb-4 md:mb-6 flex flex-row justify-between items-center border border-gray-100">
+                <div className="flex items-center gap-2 md:gap-3">
+                   <button onClick={() => setViewMode('list')} className={`p-1.5 md:p-2 transition rounded ${viewMode === 'list' ? 'text-black bg-white shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}>
+                     <List size={18} className="md:w-5 md:h-5" />
+                   </button>
+                   <button onClick={() => setViewMode('grid')} className={`p-1.5 md:p-2 transition rounded ${viewMode === 'grid' ? 'text-black bg-white shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}>
+                     <Grid size={18} className="md:w-5 md:h-5" />
+                   </button>
+                </div>
+                <p className="text-xs md:text-sm text-gray-500">
                     Showing <span className="font-bold text-black">{displayProducts.length}</span> results
                 </p>
              </div>
 
-             {/* Products Grid */}
+             {/* --- PRODUCTS GRID --- */}
              {displayProducts.length > 0 ? (
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-6">
-                  {displayProducts.map((item, index) => (
-                    <div key={index} className="group bg-white border border-gray-100 rounded-xl p-4 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 relative overflow-hidden">
-                       
-                       {/* Discount Badge Mockup */}
-                       <span className="absolute top-3 left-3 bg-red-500 text-white text-[10px] font-bold px-2 py-1 rounded z-10">HOT</span>
+                <div className={viewMode === 'grid' 
+                    ? "grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-6" 
+                    : "flex flex-col gap-4"}>
+                  
+                  {displayProducts.map((item, index) => {
+                    const itemSize = item.sizes[0] || 'M';
+                    const qty = getItemCount(item._id, itemSize);
 
-                       {/* Image */}
-                       <div className="h-40 flex items-center justify-center mb-4 overflow-hidden rounded-lg bg-gray-50">
-                          <Link to={`/product/${item._id}`}>
-                             <img src={item.image[0]} alt={item.name} className="h-full w-full object-contain group-hover:scale-110 transition-transform duration-500" />
-                          </Link>
-                       </div>
+                    return (
+                      <div 
+                          key={index} 
+                          className={`group bg-white border border-gray-100 rounded-xl p-3 md:p-4 transition-all duration-300 hover:shadow-lg relative overflow-hidden flex 
+                          ${viewMode === 'list' ? 'flex-row gap-6 items-center' : 'flex-col justify-between hover:-translate-y-1'}`}
+                      >
+                         
+                         {/* Image */}
+                         <div className={`${viewMode === 'list' ? 'w-32 h-32' : 'h-36 md:h-44 w-full mb-3'} flex items-center justify-center overflow-hidden rounded-lg bg-gray-50 relative shrink-0`}>
+                            <Link to={`/product/${item._id}`} className="w-full h-full flex items-center justify-center">
+                               <img src={item.image[0]} alt={item.name} className="h-full w-full object-contain p-2 group-hover:scale-110 transition-transform duration-500" />
+                            </Link>
+                         </div>
 
-                       {/* Content */}
-                       <div>
-                           <p className="text-[10px] text-gray-400 uppercase font-bold tracking-wider mb-1">{item.subCategory}</p>
-                           <Link to={`/product/${item._id}`}>
-                               <h3 className="font-bold text-gray-700 text-sm mb-2 line-clamp-2 hover:text-[#2bbef9] transition-colors h-10">
-                                   {item.name}
-                               </h3>
-                           </Link>
-                           
-                           {/* Rating Mockup */}
-                           <div className="flex items-center gap-1 mb-2">
-                               {[...Array(5)].map((_, i) => (
-                                   <Star key={i} size={12} className="fill-yellow-400 text-yellow-400" />
-                               ))}
-                           </div>
+                         {/* Content */}
+                         <div className={`flex flex-col ${viewMode === 'list' ? 'flex-1 py-2' : 'w-full'}`}>
+                             
+                             <h3 className={`font-bold text-gray-800 text-sm md:text-[15px] mb-1 hover:text-[#2bbef9] transition-colors leading-snug ${viewMode === 'grid' && 'line-clamp-2 h-10'}`}>
+                                 {item.name}
+                             </h3>
 
-                           {/* Price & Cart */}
-                           <div className="flex items-center justify-between mt-3">
-                               <p className="text-lg font-bold text-[#D51243]">{currency}{item.price}</p>
-                               <button 
-                                   onClick={() => addToCart(item._id, item.sizes[0] || 'M')} 
-                                   className="h-10 w-10 rounded-full bg-blue-50 text-[#233a95] flex items-center justify-center hover:bg-[#233a95] hover:text-white transition-colors shadow-sm"
-                               >
-                                   <ShoppingCart size={18} />
-                               </button>
-                           </div>
-                       </div>
-                    </div>
-                  ))}
+                             {/* --- STOCK & RATING --- */}
+                             <div className="flex flex-col gap-1 mb-2">
+                                <span className="text-[10px] md:text-[11px] font-bold text-green-500 uppercase tracking-wide">IN STOCK</span>
+                                
+                                {item.rating && item.rating > 0 ? (
+                                    <div className="flex items-center gap-1">
+                                    {[...Array(5)].map((_, i) => (
+                                        <Star key={i} size={10} className={i < Math.round(item.rating) ? "fill-yellow-400 text-yellow-400" : "fill-gray-200 text-gray-200"} />
+                                    ))}
+                                    <span className="text-xs text-gray-400 ml-1">({getReviewCount(item)})</span>
+                                    </div>
+                                ) : (
+                                    <div className="h-3"></div> 
+                                )}
+                             </div>
+
+                             <div className={`mt-auto ${viewMode === 'list' ? 'flex items-center justify-between' : ''}`}>
+                                 <div className="flex items-center gap-2 mb-3">
+                                     <span className="text-base md:text-lg font-bold text-[#D51243]">{currency}{item.price}</span>
+                                 </div>
+
+                                 {/* --- ACTION BUTTONS --- */}
+                                 {qty === 0 ? (
+                                    <button 
+                                        onClick={() => addToCart(item._id, itemSize)}
+                                        className="w-full py-1.5 md:py-2 rounded-full border border-blue-100 text-[#2bbef9] font-bold text-xs md:text-sm uppercase hover:bg-[#2bbef9] hover:text-white transition-all shadow-sm"
+                                    >
+                                        Add to Cart
+                                    </button>
+                                 ) : (
+                                    <div className="w-full flex items-center justify-between bg-[#233a95] text-white rounded-full py-1.5 md:py-2 px-1 shadow-md">
+                                        <button 
+                                            onClick={() => handleQuantityChange(item._id, itemSize, qty, 'dec')}
+                                            className="w-8 h-full flex items-center justify-center hover:bg-white/20 rounded-full transition"
+                                        >
+                                            <Minus size={14} />
+                                        </button>
+                                        <span className="text-xs md:text-sm font-bold">{qty} in Cart</span>
+                                        <button 
+                                            onClick={() => handleQuantityChange(item._id, itemSize, qty, 'inc')}
+                                            className="w-8 h-full flex items-center justify-center hover:bg-white/20 rounded-full transition"
+                                        >
+                                            <Plus size={14} />
+                                        </button>
+                                    </div>
+                                 )}
+                             </div>
+                         </div>
+                      </div>
+                    );
+                  })}
                 </div>
              ) : (
-                 /* Empty State */
-                 <div className="min-h-[300px] flex flex-col items-center justify-center border-2 border-dashed border-gray-100 rounded-xl bg-gray-50">
-                    <ShoppingBag size={48} className="text-gray-300 mb-4" />
-                    <h3 className="text-lg font-bold text-gray-600">No products found</h3>
-                    <p className="text-gray-400 text-sm">We are updating our {activeCategoryName} inventory.</p>
+                 <div className="min-h-[250px] flex flex-col items-center justify-center border-2 border-dashed border-gray-100 rounded-xl bg-gray-50 py-8">
+                    <ShoppingBag size={40} className="text-gray-300 mb-3" />
+                    <h3 className="text-base md:text-lg font-bold text-gray-600">No products found</h3>
+                    <p className="text-gray-400 text-xs md:text-sm text-center px-4">
+                        {activeSubCat !== "All" 
+                            ? `No items found in ${activeSubCat}` 
+                            : `We are updating our ${activeCategoryName} inventory.`}
+                    </p>
                  </div>
              )}
-
           </div>
         </div>
       </div>

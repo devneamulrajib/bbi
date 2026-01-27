@@ -93,9 +93,9 @@ const PlaceOrder = () => {
               const response = await axios.post(backendUrl + '/api/order/guest', guestOrderData);
               if (response.data.success) {
                   setCartItems({});
-                  // Redirect to Tracking Page
-                  navigate('/order-tracking'); 
-                  toast.success("Order Placed! Use your phone number to track.");
+                  // === CHANGED: Pass state so the tracking page shows the popup ===
+                  navigate('/order-tracking', { state: { orderSuccess: true } }); 
+                  toast.success("Order Placed!");
               } else {
                   toast.error(response.data.message);
               }

@@ -1,5 +1,7 @@
-import React from 'react'
-import { NavLink } from 'react-router-dom'
+import React, { useEffect, useState } from 'react'
+import { NavLink, useLocation } from 'react-router-dom'
+import axios from 'axios'
+import { backendUrl } from '../App' // Ensure this path is correct
 import { 
   PlusCircle, 
   List, 
@@ -11,32 +13,70 @@ import {
   FileText, 
   Users, 
   LayoutDashboard,
-  UserCog // Icon for Our Staff
+  UserCog,
+  Mail 
 } from 'lucide-react'
 
-const Sidebar = () => {
+const Sidebar = ({ token }) => {
   
-  // 1. Get User Role from LocalStorage (Default to Super Admin if not set)
+  const location = useLocation();
+  
+  // 1. Get User Role from LocalStorage
   const role = localStorage.getItem('role') || 'Super Admin';
 
   // 2. Define Permissions
-  // Accountant can ONLY view Dashboard and Orders
   const isAccountant = role === 'Accountant';
-  
-  // Manager can view everything EXCEPT Staff Management
-  // CEO, Admin, and Super Admin can view Staff Management
   const canManageStaff = ['Super Admin', 'CEO', 'Admin'].includes(role);
-
-  // Content Management (Add, List, Settings, etc.) is for everyone EXCEPT Accountant
   const canManageContent = !isAccountant;
+
+  // 3. Notification State
+  const [stats, setStats] = useState({
+      orders: 0,
+      messages: 0,
+      reviews: 0
+  });
+
+  // 4. Fetch Counts from Backend
+  const fetchStats = async () => {
+      // If no token, don't try to fetch (avoids 401 errors on login page)
+      if (!token && !localStorage.getItem('token')) return; 
+
+      try {
+          const authToken = token || localStorage.getItem('token');
+          const response = await axios.get(backendUrl + '/api/dashboard/stats', { headers: { token: authToken } });
+          if(response.data.success) {
+              setStats(response.data.stats);
+          }
+      } catch (error) {
+          console.error("Error loading sidebar stats");
+      }
+  }
+
+  // 5. Effect: Fetch on mount, on URL change, and poll every 15s
+  useEffect(() => {
+      fetchStats();
+      
+      const interval = setInterval(fetchStats, 15000); // Poll every 15 seconds
+      return () => clearInterval(interval);
+  }, [token, location.pathname]); // Update immediately when page changes (e.g., after reading messages)
+
+
+  // Helper Component for the Red Badge
+  const NotificationBadge = ({ count }) => {
+      if (!count || count <= 0) return null;
+      return (
+          <span className="ml-auto bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm">
+              {count}
+          </span>
+      );
+  }
 
   return (
     <div className='w-[18%] min-h-screen border-r-2 bg-white'>
-        <div className='flex flex-col gap-4 pt-6 pl-[20%] text-[15px]'>
+        <div className='flex flex-col gap-4 pt-6 pl-[20%] text-[15px] pr-4'>
             
             {/* --- COMMON LINKS (Everyone) --- */}
             
-            {/* 1. Dashboard */}
             <NavLink 
                 to="/" 
                 className={({ isActive }) => `flex items-center gap-3 border border-gray-300 border-r-0 px-3 py-2 rounded-l transition-all ${isActive ? 'bg-gray-100 border-r-4 border-r-black font-medium' : 'hover:bg-gray-50'}`}
@@ -45,16 +85,17 @@ const Sidebar = () => {
                 <p className='hidden md:block'>Dashboard</p>
             </NavLink>
 
-            {/* 2. Orders */}
+            {/* Orders - WITH BADGE */}
             <NavLink 
                 to="/orders" 
                 className={({ isActive }) => `flex items-center gap-3 border border-gray-300 border-r-0 px-3 py-2 rounded-l transition-all ${isActive ? 'bg-gray-100 border-r-4 border-r-black font-medium' : 'hover:bg-gray-50'}`}
             >
                 <ShoppingBag size={20} />
                 <p className='hidden md:block'>Orders</p>
+                <NotificationBadge count={stats.orders} />
             </NavLink>
 
-            {/* --- MANAGEMENT LINKS (Hidden from Accountant) --- */}
+            {/* --- MANAGEMENT LINKS --- */}
             {canManageContent && (
                 <>
                     <NavLink 
@@ -105,12 +146,24 @@ const Sidebar = () => {
                         <p className='hidden md:block'>Page Content</p>
                     </NavLink>
 
+                    {/* Reviews - WITH BADGE */}
                     <NavLink 
                         to="/reviews" 
                         className={({ isActive }) => `flex items-center gap-3 border border-gray-300 border-r-0 px-3 py-2 rounded-l transition-all ${isActive ? 'bg-gray-100 border-r-4 border-r-black font-medium' : 'hover:bg-gray-50'}`}
                     >
                         <MessageSquare size={20} />
                         <p className='hidden md:block'>Reviews</p>
+                        <NotificationBadge count={stats.reviews} />
+                    </NavLink>
+
+                    {/* Messages - WITH BADGE */}
+                    <NavLink 
+                        to="/messages" 
+                        className={({ isActive }) => `flex items-center gap-3 border border-gray-300 border-r-0 px-3 py-2 rounded-l transition-all ${isActive ? 'bg-gray-100 border-r-4 border-r-black font-medium' : 'hover:bg-gray-50'}`}
+                    >
+                        <Mail size={20} />
+                        <p className='hidden md:block'>Messages</p>
+                        <NotificationBadge count={stats.messages} />
                     </NavLink>
 
                     <NavLink 
@@ -123,7 +176,6 @@ const Sidebar = () => {
                 </>
             )}
 
-            {/* --- STAFF MANAGEMENT (Hidden from Manager & Accountant) --- */}
             {canManageStaff && (
                 <NavLink 
                     to="/staff" 

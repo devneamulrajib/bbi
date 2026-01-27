@@ -10,8 +10,8 @@ const Dashboard = ({ url, token }) => {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Helper for Currency
-  const currency = "$"; 
+  // Helper for Currency (Changed to Taka)
+  const currency = "৳"; 
 
   // Fetch Data
   useEffect(() => {
@@ -64,8 +64,8 @@ const Dashboard = ({ url, token }) => {
       const itemData = [
         item.name,
         item.quantity,
-        `$${item.price}`,
-        `$${item.price * item.quantity}`,
+        `BDT ${item.price}`, // Used BDT text for PDF compatibility
+        `BDT ${item.price * item.quantity}`,
       ];
       tableRows.push(itemData);
     });
@@ -77,7 +77,7 @@ const Dashboard = ({ url, token }) => {
     });
 
     // Final Amount
-    doc.text(`Total Amount: $${order.amount}`, 140, doc.lastAutoTable.finalY + 15);
+    doc.text(`Total Amount: BDT ${order.amount}`, 140, doc.lastAutoTable.finalY + 15);
     
     doc.save(`invoice_${order._id}.pdf`);
   };

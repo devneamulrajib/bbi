@@ -182,11 +182,11 @@ const Add = ({ token }) => {
                 <p className='mb-2 text-gray-600 font-medium'>Pricing & Specifications</p>
                 <div className='flex flex-wrap gap-4'>
                     <div>
-                        <p className='text-xs text-gray-500 mb-1'>Sale Price ($)</p>
+                        <p className='text-xs text-gray-500 mb-1'>Sale Price (BDT)</p>
                         <input onChange={(e)=>setPrice(e.target.value)} value={price} className='w-32 px-3 py-2 border rounded' type="number" placeholder='20' required />
                     </div>
                     <div>
-                        <p className='text-xs text-gray-500 mb-1'>Old Price ($)</p>
+                        <p className='text-xs text-gray-500 mb-1'>Old Price (BDT)</p>
                         <input onChange={(e)=>setOldPrice(e.target.value)} value={oldPrice} className='w-32 px-3 py-2 border rounded' type="number" placeholder='25' />
                     </div>
                     <div>
